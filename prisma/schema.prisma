@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InterviewModule {
+  BEHAVIORAL
+  CV_RELATED
+  TECHNICAL
+  MARKET
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SessionStatus {
+  CREATED
+  IN_PROGRESS
+  SCORING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id         String        @id @default(cuid())
+  email      String        @unique
+  name       String?
+  targetRole String?       @map("target_role")
+  sessions   MockSession[]
+  events     Event[]
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model QuestionBank {
+  id              String           @id @default(cuid())
+  externalId      String           @unique @map("external_id")
+  module          InterviewModule
+  targetRole      String           @map("target_role")
+  difficulty      Difficulty       @default(MEDIUM)
+  prompt          String
+  expectation     String?
+  rubricVersionId String?          @map("rubric_version_id")
+  rubricVersion   RubricVersion?   @relation(fields: [rubricVersionId], references: [id])
+  answers         Answer[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@index([module, targetRole, difficulty])
+  @@map("question_bank")
+}
+
+model MockSession {
+  id                  String        @id @default(cuid())
+  userId              String?       @map("user_id")
+  user                User?         @relation(fields: [userId], references: [id])
+  module              InterviewModule
+  targetRole          String        @map("target_role")
+  difficulty          Difficulty    @default(MEDIUM)
+  status              SessionStatus @default(CREATED)
+  questionCount       Int           @default(3) @map("question_count")
+  currentQuestionIndex Int          @default(0) @map("current_question_index")
+  selectedQuestionIds String[]      @map("selected_question_ids")
+  followUpRound       Int           @default(0) @map("follow_up_round")
+  answers             Answer[]
+  scores              AiScore[]
+  report              Report?
+  events              Event[]
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([module, targetRole])
+  @@map("mock_sessions")
+}
+
+model Answer {
+  id            String       @id @default(cuid())
+  sessionId     String       @map("session_id")
+  session       MockSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId    String       @map("question_id")
+  question      QuestionBank @relation(fields: [questionId], references: [id])
+  content       String
+  followUpRound Int          @default(0) @map("follow_up_round")
+  audioUrl      String?      @map("audio_url")
+  transcript    String?
+  sttStatus     String?      @map("stt_status")
+  score         AiScore?
+  submittedAt   DateTime     @default(now()) @map("submitted_at")
+
+  @@unique([sessionId, questionId, followUpRound])
+  @@index([sessionId, submittedAt])
+  @@map("answers")
+}
+
+model AiScore {
+  id               String         @id @default(cuid())
+  sessionId        String         @map("session_id")
+  session          MockSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answerId         String         @unique @map("answer_id")
+  answer           Answer         @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  rubricVersionId  String?        @map("rubric_version_id")
+  rubricVersion    RubricVersion? @relation(fields: [rubricVersionId], references: [id])
+  starCompleteness Int            @map("star_completeness")
+  logicStructure   Int            @map("logic_structure")
+  contentDepth     Int            @map("content_depth")
+  communication    Int
+  totalScore       Int            @map("total_score")
+  deductions       String[]
+  improvements     String[]
+  sampleAnswer     String         @map("sample_answer")
+  reasoning        String
+  rawJson          Json           @map("raw_json")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@index([sessionId, totalScore])
+  @@map("ai_scores")
+}
+
+model Report {
+  id                String      @id @default(cuid())
+  sessionId         String      @unique @map("session_id")
+  session           MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  summary           String
+  averageScore      Float       @map("average_score")
+  dimensionAverages Json        @map("dimension_averages")
+  questionFeedback  Json        @map("question_feedback")
+  nextPracticePlan  String[]    @map("next_practice_plan")
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model RubricVersion {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  version   Int
+  title     String
+  dimensions Json
+  isActive  Boolean        @default(true) @map("is_active")
+  questions QuestionBank[]
+  scores    AiScore[]
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@map("rubric_versions")
+}
+
+model Event {
+  id        String       @id @default(cuid())
+  name      String
+  userId    String?      @map("user_id")
+  user      User?        @relation(fields: [userId], references: [id])
+  sessionId String?      @map("session_id")
+  session   MockSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  payload   Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("events")
+}
+
+model EvalSample {
+  id          String          @id @default(cuid())
+  module      InterviewModule
+  targetRole  String          @map("target_role")
+  question    String
+  answer      String
+  humanScore  Int             @map("human_score")
+  notes       String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@index([module, targetRole])
+  @@map("eval_samples")
+}
