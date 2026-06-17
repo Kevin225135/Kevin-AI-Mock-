@@ -30,6 +30,8 @@ const communicationPenaltySignals = [
   /stuff|things|something|whatever|很多很多|大概就是|反正/i
 ];
 
+const DEFAULT_PROVIDER_TIMEOUT_MS = 15000;
+
 export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResult> {
   let lastError: unknown;
 
@@ -50,12 +52,75 @@ export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResul
 }
 
 async function scoreWithProvider(input: ScoreAnswerInput) {
+  try {
+    if (process.env.AI_PROVIDER === "ark") {
+      return await scoreWithArkResponses(input);
+    }
+
+    return await scoreWithOpenAiCompatible(input);
+  } catch {
+    return scoreWithLocalRubric(input);
+  }
+}
+
+async function scoreWithArkResponses(input: ScoreAnswerInput) {
+  const apiKey = process.env.ARK_API_KEY ?? process.env.AI_API_KEY;
+  if (!apiKey) {
+    return scoreWithLocalRubric(input);
+  }
+
+  const baseUrl =
+    process.env.ARK_API_BASE_URL ??
+    process.env.AI_API_BASE_URL ??
+    "https://ark.cn-beijing.volces.com/api/v3";
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/responses`, {
+    method: "POST",
+    signal: AbortSignal.timeout(getProviderTimeoutMs()),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model:
+        process.env.ARK_MODEL ??
+        process.env.AI_MODEL ??
+        "doubao-seed-2-0-pro-260215",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: buildScoringPrompt(input)
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    return scoreWithLocalRubric(input);
+  }
+
+  const payload = await response.json();
+  const content = extractProviderText(payload);
+
+  if (!content) {
+    return scoreWithLocalRubric(input);
+  }
+
+  return parseProviderJson(content);
+}
+
+async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
   if (!process.env.AI_API_BASE_URL || !process.env.AI_API_KEY) {
     return scoreWithLocalRubric(input);
   }
 
   const response = await fetch(`${process.env.AI_API_BASE_URL}/chat/completions`, {
     method: "POST",
+    signal: AbortSignal.timeout(getProviderTimeoutMs()),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.AI_API_KEY}`
@@ -86,7 +151,98 @@ async function scoreWithProvider(input: ScoreAnswerInput) {
     return scoreWithLocalRubric(input);
   }
 
-  return JSON.parse(content);
+  return parseProviderJson(content);
+}
+
+function extractProviderText(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  if (typeof payload.output_text === "string") {
+    return payload.output_text;
+  }
+
+  const choicesText = extractOpenAiChoiceText(payload);
+  if (choicesText) {
+    return choicesText;
+  }
+
+  if (Array.isArray(payload.output)) {
+    const text = payload.output
+      .flatMap((item) => extractContentText(item))
+      .join("\n")
+      .trim();
+    return text || null;
+  }
+
+  return null;
+}
+
+function extractOpenAiChoiceText(payload: Record<string, unknown>) {
+  if (!Array.isArray(payload.choices)) {
+    return null;
+  }
+
+  const firstChoice = payload.choices[0];
+  if (!isRecord(firstChoice) || !isRecord(firstChoice.message)) {
+    return null;
+  }
+
+  return typeof firstChoice.message.content === "string"
+    ? firstChoice.message.content
+    : null;
+}
+
+function extractContentText(item: unknown): string[] {
+  if (!isRecord(item)) {
+    return [];
+  }
+
+  if (typeof item.text === "string") {
+    return [item.text];
+  }
+  if (typeof item.content === "string") {
+    return [item.content];
+  }
+  if (Array.isArray(item.content)) {
+    return item.content.flatMap((contentItem) => extractContentText(contentItem));
+  }
+
+  return [];
+}
+
+function parseProviderJson(content: string) {
+  const cleaned = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    }
+    throw new Error("AI provider did not return valid JSON.");
+  }
+}
+
+function trimTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function getProviderTimeoutMs() {
+  const timeout = Number(process.env.AI_PROVIDER_TIMEOUT_MS);
+  return Number.isFinite(timeout) && timeout > 0
+    ? timeout
+    : DEFAULT_PROVIDER_TIMEOUT_MS;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {

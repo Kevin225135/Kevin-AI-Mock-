@@ -2,11 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Loader2, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Circle,
+  FileText,
+  Loader2,
+  Send,
+  Timer
+} from "lucide-react";
 import { difficultyOptions, moduleOptions } from "@/lib/domain/constants";
 import type { MockSession, Question, Report } from "@/lib/domain/types";
-import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "./ui/card";
+import { Progress } from "./ui/progress";
+import { Textarea } from "./ui/textarea";
 
 type SessionPayload = {
   session: MockSession;
@@ -37,7 +55,7 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
         return;
       }
       if (!response.ok) {
-        setError(data.error ?? "无法加载 mock。");
+        setError(data.error ?? "无法加载 Mock。");
       } else {
         setPayload(data);
       }
@@ -95,18 +113,18 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-panel">
-        <div className="flex items-center gap-3 text-sm text-slate-600">
-          <Loader2 className="size-4 animate-spin text-pine" />
-          加载 mock
-        </div>
-      </div>
+      <Card className="shadow-panel">
+        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-primary" />
+          加载 Mock
+        </CardContent>
+      </Card>
     );
   }
 
   if (error && !payload) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
+      <div className="rounded-md border border-red-200 bg-red-50 p-6 text-sm text-red-800 shadow-subtle">
         {error}
       </div>
     );
@@ -128,126 +146,168 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
     session.questions.length
   );
   const canSubmit = answer.trim().length >= 20 && !isSubmitting;
+  const answeredIds = new Set(session.answers.map((item) => item.questionId));
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[0.78fr_1.22fr]">
-      <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
-        <Button variant="ghost" onClick={() => router.push("/")}>
-          <ArrowLeft className="size-4" />
-          返回配置
-        </Button>
+    <div className="grid w-full max-w-[calc(100vw-2rem)] min-w-0 gap-5 sm:max-w-none lg:grid-cols-[0.72fr_1.28fr]">
+      <Card className="overflow-hidden shadow-panel">
+        <CardHeader className="border-b border-border/70 bg-card/60">
+          <Button
+            variant="ghost"
+            className="w-fit px-0 text-muted-foreground hover:bg-transparent"
+            onClick={() => router.push("/")}
+          >
+            <ArrowLeft className="size-4" />
+            返回配置
+          </Button>
 
-        <div className="mt-6 space-y-4">
-          <div>
-            <p className="text-sm text-slate-500">Session</p>
-            <h2 className="mt-1 break-all text-lg font-semibold text-ink">
-              {session.id}
-            </h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="teal">{moduleLabel}</Badge>
-            <Badge tone="amber">{session.targetRole}</Badge>
-            <Badge>{difficultyLabel}</Badge>
-          </div>
-          <div>
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold text-slate-800">进度</span>
-              <span className="text-slate-600">
-                {session.answers.length}/{session.questions.length}
-              </span>
+          <div className="space-y-4">
+            <div>
+              <CardDescription>Session</CardDescription>
+              <CardTitle className="mt-1 break-all text-base leading-6">
+                {session.id}
+              </CardTitle>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-pine transition-all"
-                style={{ width: `${progress}%` }}
-              />
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="teal">{moduleLabel}</Badge>
+              <Badge tone="amber">{session.targetRole}</Badge>
+              <Badge>{difficultyLabel}</Badge>
             </div>
           </div>
-          <div className="space-y-2">
-            {session.questions.map((question, index) => {
-              const answered = session.answers.some(
-                (item) => item.questionId === question.id
-              );
-              const active = currentQuestion?.id === question.id;
-              return (
-                <div
-                  key={question.id}
-                  className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3"
-                >
-                  <CheckCircle2
-                    className={`mt-0.5 size-4 ${
-                      answered ? "text-pine" : active ? "text-brass" : "text-slate-300"
-                    }`}
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-ink">Q{index + 1}</p>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
-                      {question.prompt}
-                    </p>
+        </CardHeader>
+
+        <CardContent className="pt-6">
+          <div className="space-y-6">
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="font-semibold text-foreground">进度</span>
+                <span className="text-muted-foreground">
+                  {session.answers.length}/{session.questions.length}
+                </span>
+              </div>
+              <Progress value={progress} />
+            </div>
+
+            <div className="space-y-3">
+              {session.questions.map((question, index) => {
+                const answered = answeredIds.has(question.id);
+                const active = currentQuestion?.id === question.id;
+                const Icon = answered ? Check : active ? Timer : Circle;
+
+                return (
+                  <div
+                    key={question.id}
+                    className={cn(
+                      "grid grid-cols-[2rem_1fr] gap-3 rounded-md border p-3 transition-all",
+                      active
+                        ? "border-ink bg-ink text-primary-foreground shadow-lift"
+                        : answered
+                          ? "border-primary/20 bg-primary/10"
+                          : "border-border/80 bg-background/50 hover:border-ink/20 hover:bg-card"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-full border",
+                        active
+                          ? "border-primary-foreground/20 bg-primary-foreground/10"
+                          : "border-border bg-card"
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Q{index + 1}</p>
+                      <p
+                        className={cn(
+                          "mt-1 line-clamp-2 text-xs leading-5",
+                          active
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {question.prompt}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </aside>
+        </CardContent>
+      </Card>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+      <Card className="overflow-hidden shadow-panel">
         {currentQuestion ? (
           <>
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <Badge tone="coral">
-                  Question {displayIndex}/{session.questions.length}
+            <CardHeader className="border-b border-border/70 bg-card/60">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <Badge tone="slate">
+                    Question {displayIndex}/{session.questions.length}
+                  </Badge>
+                  <CardTitle className="mt-4 max-w-4xl text-2xl leading-9">
+                    {currentQuestion.prompt}
+                  </CardTitle>
+                </div>
+                <Badge tone="teal" className="w-fit shrink-0">
+                  Structured
                 </Badge>
-                <h2 className="mt-3 text-xl font-semibold leading-8 text-ink">
-                  {currentQuestion.prompt}
-                </h2>
               </div>
-            </div>
+            </CardHeader>
 
-            {currentQuestion.expectation ? (
-              <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                {currentQuestion.expectation}
-              </p>
-            ) : null}
+            <CardContent className="pt-6">
+              {currentQuestion.expectation ? (
+                <div className="mb-5 border-l border-ink/30 bg-background/50 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    考察重点
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-foreground">
+                    {currentQuestion.expectation}
+                  </p>
+                </div>
+              ) : null}
 
-            <label className="mt-5 block">
-              <span className="text-sm font-semibold text-slate-800">文字回答</span>
-              <textarea
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                rows={13}
-                className="mt-2 w-full resize-y rounded-md border border-slate-300 bg-white p-4 text-sm leading-7 outline-none focus:border-pine focus:ring-2 focus:ring-teal-100"
-                placeholder="用 STAR 或结论先行的结构作答..."
-              />
-            </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-foreground">文字回答</span>
+                <Textarea
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  rows={13}
+                  className="mt-2 min-h-[340px] resize-y bg-background/70 text-base leading-8"
+                  placeholder="用 STAR 或结论先行的结构作答..."
+                />
+              </label>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-500">{answer.trim().length} 字符</p>
-              <Button onClick={submitAnswer} disabled={!canSubmit}>
-                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                提交评分
-                <Send className="size-4" />
-              </Button>
-            </div>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {answer.trim().length} 字符，至少 20 字符可提交
+                </p>
+                <Button onClick={submitAnswer} disabled={!canSubmit}>
+                  {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  提交评分
+                  <Send className="size-4" />
+                </Button>
+              </div>
 
-            {error ? (
-              <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {error}
-              </p>
-            ) : null}
+              {error ? (
+                <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  {error}
+                </p>
+              ) : null}
+            </CardContent>
           </>
         ) : (
-          <div className="flex flex-col items-start gap-4">
+          <CardContent className="flex min-h-[420px] flex-col items-start justify-center gap-4 p-6">
             <Badge tone="teal">Completed</Badge>
-            <h2 className="text-xl font-semibold text-ink">本场 mock 已完成</h2>
+            <CardTitle className="text-2xl">本场 Mock 已完成</CardTitle>
             <Button onClick={() => router.push(`/report/${sessionId}`)}>
               查看复盘报告
+              <FileText className="size-4" />
             </Button>
-          </div>
+          </CardContent>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

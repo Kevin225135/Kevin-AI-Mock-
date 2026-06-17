@@ -1,28 +1,36 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-type BadgeProps = {
-  children: React.ReactNode;
-  tone?: "neutral" | "teal" | "amber" | "coral";
-  className?: string;
-};
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors",
+  {
+    variants: {
+      tone: {
+        neutral: "border-border/80 bg-card/70 text-muted-foreground",
+        teal: "border-primary/20 bg-primary/10 text-primary",
+        amber: "border-brass/20 bg-brass/10 text-brass",
+        coral: "border-coral/20 bg-coral/10 text-coral",
+        slate: "border-ink/10 bg-ink/5 text-ink/70"
+      }
+    },
+    defaultVariants: {
+      tone: "neutral"
+    }
+  }
+);
 
-const tones = {
-  neutral: "border-slate-200 bg-white text-slate-700",
-  teal: "border-teal-200 bg-teal-50 text-teal-800",
-  amber: "border-amber-200 bg-amber-50 text-amber-800",
-  coral: "border-red-200 bg-red-50 text-red-800"
-};
+type BadgeProps = React.HTMLAttributes<HTMLSpanElement> &
+  VariantProps<typeof badgeVariants>;
 
-export function Badge({ children, tone = "neutral", className }: BadgeProps) {
+export function Badge({ children, tone, className, ...props }: BadgeProps) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold",
-        tones[tone],
-        className
-      )}
+      className={cn(badgeVariants({ tone, className }))}
+      {...props}
     >
       {children}
     </span>
   );
 }
+
+export { badgeVariants };

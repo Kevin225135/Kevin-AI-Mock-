@@ -1,40 +1,62 @@
 "use client";
 
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold tracking-normal transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45",
+  {
+    variants: {
+      variant: {
+        primary:
+          "border border-ink bg-ink text-primary-foreground shadow-subtle hover:-translate-y-0.5 hover:bg-ink/92 hover:shadow-lift",
+        secondary:
+          "border border-input bg-card/80 text-foreground shadow-subtle backdrop-blur hover:-translate-y-0.5 hover:bg-card hover:shadow-lift",
+        outline:
+          "border border-input bg-background/50 text-foreground hover:bg-card",
+        ghost:
+          "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+        danger:
+          "border border-destructive bg-destructive text-destructive-foreground shadow-subtle hover:-translate-y-0.5 hover:bg-coral/90"
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-8 px-3 text-xs",
+        lg: "h-11 px-5",
+        icon: "size-10"
+      }
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "default"
+    }
+  }
+);
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-};
-
-const variants: Record<ButtonVariant, string> = {
-  primary:
-    "bg-pine text-white hover:bg-teal-800 focus-visible:outline-pine disabled:bg-slate-300",
-  secondary:
-    "border border-slate-300 bg-white text-ink hover:bg-slate-50 focus-visible:outline-pine",
-  ghost:
-    "bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:outline-pine",
-  danger:
-    "bg-coral text-white hover:bg-red-800 focus-visible:outline-coral disabled:bg-slate-300"
-};
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  };
 
 export function Button({
   className,
-  variant = "primary",
+  variant,
+  size,
+  asChild = false,
   type = "button",
   ...props
 }: ButtonProps) {
+  const Comp = asChild ? Slot : "button";
+
   return (
-    <button
+    <Comp
       type={type}
-      className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed",
-        variants[variant],
-        className
-      )}
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
 }
+
+export { buttonVariants };

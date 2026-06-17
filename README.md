@@ -28,6 +28,38 @@ npm run db:migrate
 npm run db:seed
 ```
 
+## 配置火山方舟 Ark
+
+评分默认使用本地 rubric。要切换到你给的 Ark Responses API，在项目根目录创建 `.env.local`：
+
+```bash
+AI_PROVIDER="ark"
+ARK_API_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
+ARK_MODEL="doubao-seed-2-0-pro-260215"
+ARK_API_KEY="你的 Ark API Key"
+```
+
+请求形态使用 `/responses`：
+
+```json
+{
+  "model": "doubao-seed-2-0-pro-260215",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "评分 prompt"
+        }
+      ]
+    }
+  ]
+}
+```
+
+`.env.local` 已被 `.gitignore` 覆盖，不要把真实 key 提交到仓库。
+
 ## 常用脚本
 
 - `npm run dev`：启动 Next.js 开发服务

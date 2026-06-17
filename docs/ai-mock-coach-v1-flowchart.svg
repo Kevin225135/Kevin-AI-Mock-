@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="610" viewBox="0 0 1400 610" role="img" aria-labelledby="title desc">
+  <title id="title">AI Mock教练V1 核心流程图</title>
+  <desc id="desc">展示 AI Mock 面试教练从选择目标、AI 出题、用户作答、Rubric 评分、质量校验到复盘报告的闭环流程。</desc>
+  <defs>
+    <style>
+      .title { font: 800 42px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 20px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #526071; }
+      .num { font: 800 22px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .head { font: 800 23px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .body { font: 400 16px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #4b5563; }
+      .strong { font: 700 16px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .card { stroke-width: 2; rx: 12; filter: url(#shadow); }
+      .support-head { font: 800 18px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .support-body { font: 400 14px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #566274; }
+      .footer { font: 400 15px "Microsoft YaHei", "Segoe UI", Arial, sans-serif; fill: #64748b; }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="610" fill="#ffffff"/>
+
+  <text x="700" y="58" text-anchor="middle" class="title">AI Mock教练V1</text>
+  <text x="700" y="91" text-anchor="middle" class="subtitle">核心闭环：高频练习 → 即时评分 → 结构化复盘 → 再练提升</text>
+
+  <g transform="translate(38 128)">
+    <g>
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#eff6ff" stroke="#bfdbfe"/>
+      <circle cx="27" cy="27" r="18" fill="#2563eb"/>
+      <text x="27" y="35" text-anchor="middle" class="num">1</text>
+      <text x="18" y="67" class="head">选择目标</text>
+      <text x="18" y="99" class="strong">用户输入</text>
+      <text x="18" y="125" class="body">岗位 / 模块 / 难度 / 题量</text>
+    </g>
+    <line x1="213" y1="75" x2="242" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+    <g transform="translate(252 0)">
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#f0fdf4" stroke="#bbf7d0"/>
+      <circle cx="27" cy="27" r="18" fill="#16a34a"/>
+      <text x="27" y="35" text-anchor="middle" class="num">2</text>
+      <text x="18" y="67" class="head">AI 出题</text>
+      <text x="18" y="99" class="strong">题库筛选</text>
+      <text x="18" y="125" class="body">四模块题库 + 岗位匹配</text>
+    </g>
+    <line x1="465" y1="75" x2="494" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+    <g transform="translate(504 0)">
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#eff6ff" stroke="#bfdbfe"/>
+      <circle cx="27" cy="27" r="18" fill="#2563eb"/>
+      <text x="27" y="35" text-anchor="middle" class="num">3</text>
+      <text x="18" y="67" class="head">用户作答</text>
+      <text x="18" y="99" class="strong">保存回答</text>
+      <text x="18" y="125" class="body">答案 / 耗时 / 会话状态</text>
+    </g>
+    <line x1="717" y1="75" x2="746" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+    <g transform="translate(756 0)">
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#f0fdf4" stroke="#bbf7d0"/>
+      <circle cx="27" cy="27" r="18" fill="#16a34a"/>
+      <text x="27" y="35" text-anchor="middle" class="num">4</text>
+      <text x="18" y="67" class="head">Rubric 评分</text>
+      <text x="18" y="99" class="strong">多维打分</text>
+      <text x="18" y="125" class="body">STAR / 结构 / 深度 / 表达</text>
+    </g>
+    <line x1="969" y1="75" x2="998" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+    <g transform="translate(1008 0)">
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#fffbeb" stroke="#fde68a"/>
+      <circle cx="27" cy="27" r="18" fill="#d97706"/>
+      <text x="27" y="35" text-anchor="middle" class="num">5</text>
+      <text x="18" y="67" class="head">质量校验</text>
+      <text x="18" y="99" class="strong">可信兜底</text>
+      <text x="18" y="125" class="body">Schema / 边界 / 重试</text>
+    </g>
+    <line x1="1221" y1="75" x2="1250" y2="75" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+    <g transform="translate(1260 0)">
+      <rect class="card" x="0" y="0" width="205" height="150" fill="#f5f3ff" stroke="#ddd6fe"/>
+      <circle cx="27" cy="27" r="18" fill="#7c3aed"/>
+      <text x="27" y="35" text-anchor="middle" class="num">6</text>
+      <text x="18" y="67" class="head">复盘报告</text>
+      <text x="18" y="99" class="strong">行动建议</text>
+      <text x="18" y="125" class="body">扣分依据 + 范例答案</text>
+    </g>
+  </g>
+
+  <rect x="170" y="318" width="1060" height="54" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="8 7"/>
+  <text x="700" y="352" text-anchor="middle" class="body">
+    <tspan font-weight="800" fill="#0f172a">闭环目标：</tspan>用户看完复盘后，基于薄弱维度再练一场，形成可量化进步。
+  </text>
+
+  <g transform="translate(80 410)">
+    <g>
+      <rect x="0" y="0" width="290" height="82" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="18" y="31" class="support-head">V1 不做复杂追问</text>
+      <text x="18" y="58" class="support-body">动态追问与语音作答放到 V2，先验证反馈价值。</text>
+    </g>
+    <g transform="translate(330 0)">
+      <rect x="0" y="0" width="290" height="82" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="18" y="31" class="support-head">反馈必须有证据</text>
+      <text x="18" y="58" class="support-body">每个低分维度都要对应用户回答中的缺失点。</text>
+    </g>
+    <g transform="translate(660 0)">
+      <rect x="0" y="0" width="290" height="82" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="18" y="31" class="support-head">异常必须可降级</text>
+      <text x="18" y="58" class="support-body">LLM 超时或格式异常时，重试或稍后评分。</text>
+    </g>
+    <g transform="translate(990 0)">
+      <rect x="0" y="0" width="290" height="82" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="18" y="31" class="support-head">效果用数据验证</text>
+      <text x="18" y="58" class="support-body">看完成率、报告查看率、7 日回访率和评分提升。</text>
+    </g>
+  </g>
+
+  <line x1="80" y1="542" x2="1320" y2="542" stroke="#e5e7eb"/>
+  <g transform="translate(80 570)">
+    <circle cx="0" cy="-5" r="6" fill="#2563eb"/><text x="12" y="0" class="footer">用户动作</text>
+    <circle cx="110" cy="-5" r="6" fill="#16a34a"/><text x="122" y="0" class="footer">AI 能力</text>
+    <circle cx="210" cy="-5" r="6" fill="#d97706"/><text x="222" y="0" class="footer">质量兜底</text>
+    <circle cx="330" cy="-5" r="6" fill="#7c3aed"/><text x="342" y="0" class="footer">用户价值</text>
+  </g>
+  <text x="1320" y="570" text-anchor="end" class="footer">V1 主线：先把“评分可信 + 复盘有用”做扎实</text>
+</svg>
