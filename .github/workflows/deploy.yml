@@ -72,8 +72,10 @@ jobs:
           cp -R prisma release/prisma
           cp package.json package-lock.json release/
           mkdir -p release/node_modules
+          rm -rf release/node_modules/prisma release/node_modules/@prisma
           cp -R node_modules/prisma release/node_modules/prisma
-          cp -R node_modules/@prisma release/node_modules/@prisma
+          mkdir -p release/node_modules/@prisma
+          cp -R node_modules/@prisma/. release/node_modules/@prisma/
 
           cp deploy/ecosystem.config.cjs release/ecosystem.config.cjs
           tar -C release -czf "$RELEASE_ARCHIVE" .
