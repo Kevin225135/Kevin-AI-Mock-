@@ -40,7 +40,9 @@ function parseEnvFile(filePath) {
 const fileEnv = parseEnvFile(envFile);
 const appName =
   process.env.PM2_APP_NAME || fileEnv.PM2_APP_NAME || "ai-mock-interview-coach";
-const instances = Number(process.env.PM2_INSTANCES || fileEnv.PM2_INSTANCES || 1);
+const instances = Number(
+  process.env.PM2_INSTANCES || fileEnv.PM2_INSTANCES || 1,
+);
 
 module.exports = {
   apps: [
@@ -56,8 +58,9 @@ module.exports = {
       env: {
         ...fileEnv,
         NODE_ENV: "production",
-        PORT: process.env.PORT || fileEnv.PORT || "3000"
-      }
-    }
-  ]
+        PORT: fileEnv.PORT || process.env.PORT || "3000",
+        HOSTNAME: fileEnv.HOSTNAME || process.env.NEXT_HOSTNAME || "0.0.0.0",
+      },
+    },
+  ],
 };

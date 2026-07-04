@@ -241,11 +241,141 @@ jobs:
           test -f "$release_dir/server.js"
           test -f "$release_dir/ecosystem.config.cjs"
 
+          release_port="$(
+            ENV_FILE="$release_dir/.env.production" node <<'NODE'
+          const fs = require("node:fs");
+          const envFile = process.env.ENV_FILE;
+          let port = "";
+
+          for (const rawLine of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
+            const line = rawLine.trim();
+
+            if (!line || line.startsWith("#")) {
+              continue;
+            }
+
+            const match = line.match(/^PORT\s*=\s*(.*)$/);
+
+            if (!match) {
+              continue;
+            }
+
+            let value = match[1].trim();
+            const quoted =
+              (value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"));
+
+            if (quoted) {
+              value = value.slice(1, -1);
+            }
+
+            port = value;
+          }
+
+          console.log(port || "3000");
+          NODE
+          )"
+
           ln -sfnT "$release_dir" "$DEPLOY_PATH/current"
           cd "$DEPLOY_PATH/current"
 
           export PM2_APP_NAME
-          pm2 startOrReload ecosystem.config.cjs --only "$PM2_APP_NAME" --update-env
+          ss_output="$(ss -ltnp 2>/dev/null || true)"
+          listener_pids="$(
+            SS_OUTPUT="$ss_output" TARGET_PORT="$release_port" node <<'NODE'
+          const pids = new Set();
+          const targetPort = process.env.TARGET_PORT;
+
+          for (const line of (process.env.SS_OUTPUT || "").split(/\r?\n/)) {
+            const columns = line.trim().split(/\s+/);
+            const localAddress = columns[3] || "";
+
+            if (!localAddress.endsWith(`:${targetPort}`)) {
+              continue;
+            }
+
+            for (const match of line.matchAll(/pid=(\d+)/g)) {
+              pids.add(match[1]);
+            }
+          }
+
+          console.log([...pids].join(" "));
+          NODE
+          )"
+          pm2_json="$(pm2 jlist 2>/dev/null || printf '[]')"
+          pm_ids="$(
+            PM2_JSON="$pm2_json" LISTENER_PIDS="$listener_pids" PM2_APP_NAME="$PM2_APP_NAME" TARGET_PORT="$release_port" node <<'NODE'
+          const apps = JSON.parse(process.env.PM2_JSON || "[]");
+          const listenerPids = new Set(
+            (process.env.LISTENER_PIDS || "").split(/\s+/).filter(Boolean)
+          );
+          const pmIds = new Set();
+
+          for (const app of apps) {
+            const pm2Env = app.pm2_env || {};
+            const appEnv = pm2Env.env || {};
+            const name = String(app.name || "");
+            const pid = String(app.pid || "");
+            const port = String(appEnv.PORT || pm2Env.PORT || "");
+
+            if (
+              name === process.env.PM2_APP_NAME ||
+              listenerPids.has(pid) ||
+              port === process.env.TARGET_PORT
+            ) {
+              pmIds.add(String(app.pm_id));
+            }
+          }
+
+          console.log([...pmIds].join(" "));
+          NODE
+          )"
+
+          if [ -n "$pm_ids" ]; then
+            pm2 delete $pm_ids || true
+          else
+            pm2 delete "$PM2_APP_NAME" || true
+          fi
+
+          if [ -n "$listener_pids" ]; then
+            for pid in $listener_pids; do
+              if kill -0 "$pid" 2>/dev/null; then
+                kill "$pid" || true
+              fi
+            done
+
+            sleep 2
+
+            for pid in $listener_pids; do
+              if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid" || true
+              fi
+            done
+          fi
+
+          pm2 start ecosystem.config.cjs --only "$PM2_APP_NAME" --update-env
+
+          health_status=""
+          health_url="http://127.0.0.1:$release_port/login"
+
+          for _ in $(seq 1 30); do
+            health_status="$(curl -sS -o "/tmp/${APP_NAME}-health.html" -w "%{http_code}" "$health_url" || true)"
+
+            if [ "$health_status" = "200" ]; then
+              break
+            fi
+
+            sleep 1
+          done
+
+          if [ "$health_status" != "200" ]; then
+            echo "Deployment health check failed: $health_url returned $health_status." >&2
+            ss -ltnp 2>/dev/null | grep -E ":$release_port\\b" || true
+            pm2 list || true
+            pm2 logs "$PM2_APP_NAME" --lines 80 --nostream || true
+            exit 1
+          fi
+
           pm2 save
 
           cd "$DEPLOY_PATH/releases"
