@@ -69,14 +69,6 @@ jobs:
             cp -R public release/public
           fi
 
-          cp -R prisma release/prisma
-          cp package.json package-lock.json release/
-          mkdir -p release/node_modules
-          rm -rf release/node_modules/prisma release/node_modules/@prisma
-          cp -R node_modules/prisma release/node_modules/prisma
-          mkdir -p release/node_modules/@prisma
-          cp -R node_modules/@prisma/. release/node_modules/@prisma/
-
           cp deploy/ecosystem.config.cjs release/ecosystem.config.cjs
           tar -C release -czf "$RELEASE_ARCHIVE" .
 
@@ -94,6 +86,19 @@ jobs:
     needs: build
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Download release artifact
         uses: actions/download-artifact@v4
         with:
@@ -119,6 +124,31 @@ jobs:
           done
 
           exit "$missing"
+
+      - name: Run database migrations
+        shell: bash
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          database_url_line="$(grep -E '^DATABASE_URL=' production.env | tail -n 1 || true)"
+
+          if [ -z "$database_url_line" ]; then
+            echo "::error title=Missing DATABASE_URL::PRODUCTION_ENV must include DATABASE_URL."
+            exit 1
+          fi
+
+          DATABASE_URL="${database_url_line#DATABASE_URL=}"
+          DATABASE_URL="${DATABASE_URL%\"}"
+          DATABASE_URL="${DATABASE_URL#\"}"
+          DATABASE_URL="${DATABASE_URL%\'}"
+          DATABASE_URL="${DATABASE_URL#\'}"
+          export DATABASE_URL
+
+          npm run db:generate
+          npm run db:deploy
 
       - name: Configure SSH
         shell: bash
@@ -207,12 +237,6 @@ jobs:
           mv "$REMOTE_ENV" "$release_dir/.env.production"
           chmod 600 "$release_dir/.env.production"
           rm -f "$REMOTE_ARCHIVE"
-
-          cd "$release_dir"
-          set -a
-          . "$release_dir/.env.production"
-          set +a
-          node node_modules/prisma/build/index.js migrate deploy
 
           ln -sfnT "$release_dir" "$DEPLOY_PATH/current"
 
