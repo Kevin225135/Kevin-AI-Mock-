@@ -238,7 +238,11 @@ jobs:
           chmod 600 "$release_dir/.env.production"
           rm -f "$REMOTE_ARCHIVE"
 
+          test -f "$release_dir/server.js"
+          test -f "$release_dir/ecosystem.config.cjs"
+
           ln -sfnT "$release_dir" "$DEPLOY_PATH/current"
+          cd "$DEPLOY_PATH/current"
 
           export PM2_APP_NAME
           pm2 startOrReload ecosystem.config.cjs --only "$PM2_APP_NAME" --update-env
