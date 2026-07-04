@@ -28,17 +28,113 @@ enum SessionStatus {
   FAILED
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UsageLedgerType {
+  DEBIT
+  ADJUSTMENT
+  RESET
+}
+
+model UsagePlan {
+  code                String        @id
+  name                String
+  monthlySessionLimit Int?          @map("monthly_session_limit")
+  isActive            Boolean       @default(true) @map("is_active")
+  users               User[]
+  periods             UsagePeriod[]
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  @@map("usage_plans")
+}
+
 model User {
-  id         String        @id @default(cuid())
-  email      String        @unique
-  name       String?
-  targetRole String?       @map("target_role")
-  sessions   MockSession[]
-  events     Event[]
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  targetRole    String?        @map("target_role")
+  passwordHash  String         @map("password_hash")
+  role          UserRole       @default(USER)
+  status        UserStatus     @default(ACTIVE)
+  tokenVersion  Int            @default(0) @map("token_version")
+  planCode      String         @default("FREE") @map("plan_code")
+  plan          UsagePlan      @relation(fields: [planCode], references: [code])
+  lastLoginAt   DateTime?      @map("last_login_at")
+  authSessions  AuthSession[]
+  usagePeriods  UsagePeriod[]
+  usageLedger   UsageLedger[]
+  sessions      MockSession[]
+  events        Event[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model UsagePeriod {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode      String        @map("plan_code")
+  plan          UsagePlan     @relation(fields: [planCode], references: [code])
+  periodStart   DateTime      @map("period_start")
+  periodEnd     DateTime      @map("period_end")
+  sessionLimit  Int?          @map("session_limit")
+  extraSessions Int           @default(0) @map("extra_sessions")
+  sessionsUsed  Int           @default(0) @map("sessions_used")
+  ledger        UsageLedger[]
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@unique([userId, periodStart])
+  @@index([userId, periodEnd])
+  @@map("usage_periods")
+}
+
+model UsageLedger {
+  id           String          @id @default(cuid())
+  userId       String          @map("user_id")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId     String?         @map("period_id")
+  period       UsagePeriod?    @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  sessionId    String?         @map("session_id")
+  type         UsageLedgerType
+  delta        Int
+  balanceAfter Int?            @map("balance_after")
+  reason       String?
+  metadata     Json?
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([periodId, createdAt])
+  @@index([sessionId])
+  @@map("usage_ledger")
 }
 
 model QuestionBank {
@@ -61,8 +157,8 @@ model QuestionBank {
 
 model MockSession {
   id                  String        @id @default(cuid())
-  userId              String?       @map("user_id")
-  user                User?         @relation(fields: [userId], references: [id])
+  userId              String        @map("user_id")
+  user                User          @relation(fields: [userId], references: [id])
   module              InterviewModule
   targetRole          String        @map("target_role")
   difficulty          Difficulty    @default(MEDIUM)

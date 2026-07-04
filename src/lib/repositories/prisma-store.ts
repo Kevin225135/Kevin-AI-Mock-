@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { consumeSessionQuota } from "@/lib/domain/usage-service";
 import type {
   AiScore,
   AnswerRecord,
@@ -6,17 +6,8 @@ import type {
   Question,
   Report
 } from "@/lib/domain/types";
+import { prisma } from "./prisma-client";
 import type { AppDataStore, QuestionFilter, SessionPatch } from "./store";
-
-const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-};
-
-const prisma = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
 
 export const prismaDataStore: AppDataStore = {
   async listQuestions(filter) {
@@ -31,18 +22,23 @@ export const prismaDataStore: AppDataStore = {
   },
 
   async createSession(input, questions) {
-    const session = await prisma.mockSession.create({
-      data: {
-        userId: input.userId,
-        module: input.module as any,
-        targetRole: input.targetRole,
-        difficulty: input.difficulty as any,
-        status: "IN_PROGRESS",
-        questionCount: questions.length,
-        currentQuestionIndex: 0,
-        selectedQuestionIds: questions.map((question) => question.id),
-        followUpRound: 0
-      }
+    const session = await prisma.$transaction(async (tx) => {
+      const created = await tx.mockSession.create({
+        data: {
+          userId: input.userId,
+          module: input.module as any,
+          targetRole: input.targetRole,
+          difficulty: input.difficulty as any,
+          status: "IN_PROGRESS",
+          questionCount: questions.length,
+          currentQuestionIndex: 0,
+          selectedQuestionIds: questions.map((question) => question.id),
+          followUpRound: 0
+        }
+      });
+
+      await consumeSessionQuota(tx, input.userId, created.id);
+      return created;
     });
 
     const snapshot = await this.getSession(session.id);
@@ -50,6 +46,17 @@ export const prismaDataStore: AppDataStore = {
       throw new Error("Failed to create session snapshot");
     }
     return snapshot;
+  },
+
+  async listSessions(userId) {
+    const rows = await prisma.mockSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true }
+    });
+    const sessions = await Promise.all(rows.map((row) => this.getSession(row.id)));
+    return sessions.filter((session): session is MockSession => Boolean(session));
   },
 
   async getSession(sessionId) {
@@ -254,7 +261,7 @@ function mapReport(row: any): Report {
 function mapSession(row: any, questions: Question[]): MockSession {
   return {
     id: row.id,
-    userId: row.userId ?? undefined,
+    userId: row.userId,
     module: row.module,
     targetRole: row.targetRole,
     difficulty: row.difficulty,

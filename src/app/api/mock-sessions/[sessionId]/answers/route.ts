@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth/auth-service";
 import { submitMockAnswer } from "@/lib/domain/mock-service";
+import { jsonError } from "@/lib/http/errors";
+import { assertSafeOrigin } from "@/lib/http/security";
 import { submitAnswerSchema } from "@/lib/validation/mock";
 
 type RouteContext = {
@@ -7,24 +10,23 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const { sessionId } = await context.params;
-  const payload = await request.json().catch(() => null);
-  const parsed = submitAnswerSchema.safeParse(payload);
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request body.", issues: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
   try {
-    const result = await submitMockAnswer(sessionId, parsed.data);
+    assertSafeOrigin(request);
+    const actor = await requireAuth(request);
+    const { sessionId } = await context.params;
+    const payload = await request.json().catch(() => null);
+    const parsed = submitAnswerSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request body.", issues: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const result = await submitMockAnswer(sessionId, parsed.data, actor);
     return NextResponse.json(result);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to submit answer.";
-    const status = message.includes("not found") ? 404 : 400;
-    return NextResponse.json({ error: message }, { status });
+    return jsonError(error, "Failed to submit answer.");
   }
 }

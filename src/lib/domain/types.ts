@@ -13,6 +13,20 @@ export type SessionStatus =
   | "COMPLETED"
   | "FAILED";
 
+export type UserRole = "USER" | "ADMIN";
+
+export type UserStatus = "ACTIVE" | "SUSPENDED";
+
+export type CurrentUser = {
+  id: string;
+  email: string;
+  name?: string;
+  targetRole?: string;
+  role: UserRole;
+  status: UserStatus;
+  planCode: string;
+};
+
 export type ScoreDimension =
   | "starCompleteness"
   | "logicStructure"
@@ -77,7 +91,7 @@ export type Report = {
 
 export type MockSession = {
   id: string;
-  userId?: string;
+  userId: string;
   module: InterviewModule;
   targetRole: string;
   difficulty: Difficulty;
@@ -95,7 +109,7 @@ export type MockSession = {
 };
 
 export type CreateSessionInput = {
-  userId?: string;
+  userId: string;
   module: InterviewModule;
   targetRole: string;
   difficulty: Difficulty;

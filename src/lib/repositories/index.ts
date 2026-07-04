@@ -1,11 +1,17 @@
 import type { AppDataStore } from "./store";
-import { memoryDataStore } from "./memory-store";
 
 export async function getDataStore(): Promise<AppDataStore> {
-  if (process.env.DATABASE_URL) {
-    const { prismaDataStore } = await import("./prisma-store");
-    return prismaDataStore;
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is required. Configure PostgreSQL, then run `npm run db:deploy` and `npm run db:seed`."
+    );
   }
 
-  return memoryDataStore;
+  if (!/^postgres(?:ql)?:\/\//.test(databaseUrl)) {
+    throw new Error("DATABASE_URL must be a PostgreSQL connection string.");
+  }
+
+  const { prismaDataStore } = await import("./prisma-store");
+  return prismaDataStore;
 }

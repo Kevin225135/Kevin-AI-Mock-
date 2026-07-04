@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ClipboardCheck, FileText, Gauge, MessageSquareText } from "lucide-react";
+import { UserMenu } from "./user-menu";
 
 const steps = [
   { label: "配置", icon: Gauge },
@@ -26,23 +27,26 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="hidden items-center gap-1 rounded-full border border-border/70 bg-card/70 p-1 shadow-subtle sm:flex">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
+          <div className="flex min-w-0 items-center justify-end gap-3">
+            <div className="hidden items-center gap-1 rounded-full border border-border/70 bg-card/70 p-1 shadow-subtle lg:flex">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
 
-              return (
-                <span
-                  key={step.label}
-                  className="inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-semibold text-muted-foreground"
-                >
-                  <Icon className="size-3.5" />
-                  <span className="text-[10px] text-muted-foreground/70">
-                    0{index + 1}
+                return (
+                  <span
+                    key={step.label}
+                    className="inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-semibold text-muted-foreground"
+                  >
+                    <Icon className="size-3.5" />
+                    <span className="text-[10px] text-muted-foreground/70">
+                      0{index + 1}
+                    </span>
+                    {step.label}
                   </span>
-                  {step.label}
-                </span>
-              );
-            })}
+                );
+              })}
+            </div>
+            <UserMenu />
           </div>
         </div>
       </header>

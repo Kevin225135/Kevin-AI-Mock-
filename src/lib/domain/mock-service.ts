@@ -1,16 +1,23 @@
 import { scoreAnswer } from "@/lib/ai/scorer";
 import { analyticsEvents } from "@/lib/analytics/events";
+import { canAccessOwnedResource } from "@/lib/auth/permissions";
 import { getDataStore } from "@/lib/repositories";
 import { buildReport } from "./report";
 import type {
   CreateSessionInput,
+  CurrentUser,
   MockSession,
   Question,
   Report,
   SubmitAnswerInput
 } from "./types";
 
-export async function createMockSession(input: CreateSessionInput) {
+export type CreateMockSessionInput = Omit<CreateSessionInput, "userId">;
+
+export async function createMockSession(
+  input: CreateMockSessionInput,
+  actor: CurrentUser
+) {
   const store = await getDataStore();
   const candidates = await store.listQuestions({
     module: input.module,
@@ -23,12 +30,18 @@ export async function createMockSession(input: CreateSessionInput) {
     throw new Error("No questions available for this selection.");
   }
 
-  const session = await store.createSession(input, questions);
+  const session = await store.createSession(
+    {
+      ...input,
+      userId: actor.id
+    },
+    questions
+  );
 
   await store.trackEvent({
     name: analyticsEvents.mockStart,
     sessionId: session.id,
-    userId: input.userId,
+    userId: actor.id,
     payload: {
       module: input.module,
       targetRole: input.targetRole,
@@ -43,11 +56,11 @@ export async function createMockSession(input: CreateSessionInput) {
   };
 }
 
-export async function getMockSession(sessionId: string) {
+export async function getMockSession(sessionId: string, actor: CurrentUser) {
   const store = await getDataStore();
   const session = await store.getSession(sessionId);
 
-  if (!session) {
+  if (!session || !canAccessOwnedResource(actor, session.userId)) {
     return null;
   }
 
@@ -57,9 +70,15 @@ export async function getMockSession(sessionId: string) {
   };
 }
 
+export async function listMockSessions(actor: CurrentUser) {
+  const store = await getDataStore();
+  return store.listSessions(actor.id);
+}
+
 export async function submitMockAnswer(
   sessionId: string,
-  input: SubmitAnswerInput
+  input: SubmitAnswerInput,
+  actor: CurrentUser
 ): Promise<{
   session: MockSession;
   currentQuestion: Question | null;
@@ -70,6 +89,9 @@ export async function submitMockAnswer(
   const existing = await store.getSession(sessionId);
 
   if (!existing) {
+    throw new Error("Session not found.");
+  }
+  if (!canAccessOwnedResource(actor, existing.userId)) {
     throw new Error("Session not found.");
   }
   if (existing.status === "COMPLETED") {
@@ -163,17 +185,22 @@ export async function submitMockAnswer(
   };
 }
 
-export async function getReport(sessionId: string) {
+export async function getReport(sessionId: string, actor: CurrentUser) {
   const store = await getDataStore();
   const report = await store.getReport(sessionId);
   const session = await store.getSession(sessionId);
+
+  if (!session || !canAccessOwnedResource(actor, session.userId)) {
+    return null;
+  }
 
   if (report) {
     await store.trackEvent({
       name: analyticsEvents.reportView,
       sessionId,
-      userId: session?.userId,
+      userId: actor.id,
       payload: {
+        ownerUserId: session.userId,
         averageScore: report.averageScore
       }
     });

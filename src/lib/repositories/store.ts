@@ -30,6 +30,7 @@ export interface AppDataStore {
     input: CreateSessionInput,
     questions: Question[]
   ): Promise<MockSession>;
+  listSessions(userId: string): Promise<MockSession[]>;
   getSession(sessionId: string): Promise<MockSession | null>;
   saveAnswer(
     sessionId: string,

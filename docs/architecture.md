@@ -5,7 +5,7 @@
 V1 使用模块化单体：
 
 - Next.js App Router 承载 Web 与 BFF/API
-- `AppDataStore` 隔离数据层，默认内存仓库，生产接 Prisma/PostgreSQL
+- `AppDataStore` 隔离数据层，运行时固定接 Prisma/PostgreSQL
 - 本地 rubric scorer 默认同步执行，后续可切到 Redis/BullMQ worker
 - 报告由已保存的 answer + score 聚合生成
 

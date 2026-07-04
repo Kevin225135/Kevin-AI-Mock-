@@ -64,6 +64,10 @@ export function ReportView({ sessionId }: { sessionId: string }) {
       if (cancelled) {
         return;
       }
+      if (response.status === 401) {
+        router.push(`/login?next=/report/${sessionId}`);
+        return;
+      }
       if (!response.ok) {
         setError(payload.error ?? "报告还没有生成。");
       } else {
@@ -77,7 +81,7 @@ export function ReportView({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [router, sessionId]);
 
   if (isLoading) {
     return (

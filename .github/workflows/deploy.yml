@@ -69,6 +69,12 @@ jobs:
             cp -R public release/public
           fi
 
+          cp -R prisma release/prisma
+          cp package.json package-lock.json release/
+          mkdir -p release/node_modules
+          cp -R node_modules/prisma release/node_modules/prisma
+          cp -R node_modules/@prisma release/node_modules/@prisma
+
           cp deploy/ecosystem.config.cjs release/ecosystem.config.cjs
           tar -C release -czf "$RELEASE_ARCHIVE" .
 
@@ -200,8 +206,13 @@ jobs:
           chmod 600 "$release_dir/.env.production"
           rm -f "$REMOTE_ARCHIVE"
 
+          cd "$release_dir"
+          set -a
+          . "$release_dir/.env.production"
+          set +a
+          node node_modules/prisma/build/index.js migrate deploy
+
           ln -sfnT "$release_dir" "$DEPLOY_PATH/current"
-          cd "$DEPLOY_PATH/current"
 
           export PM2_APP_NAME
           pm2 startOrReload ecosystem.config.cjs --only "$PM2_APP_NAME" --update-env

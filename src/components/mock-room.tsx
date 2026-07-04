@@ -54,6 +54,10 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
       if (cancelled) {
         return;
       }
+      if (response.status === 401) {
+        router.push(`/login?next=/mock/${sessionId}`);
+        return;
+      }
       if (!response.ok) {
         setError(data.error ?? "无法加载 Mock。");
       } else {
@@ -67,7 +71,7 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [router, sessionId]);
 
   const progress = useMemo(() => {
     if (!payload) {
@@ -96,6 +100,10 @@ export function MockRoom({ sessionId }: { sessionId: string }) {
     const data = (await response.json()) as SubmitPayload & { error?: string };
 
     if (!response.ok) {
+      if (response.status === 401) {
+        router.push(`/login?next=/mock/${sessionId}`);
+        return;
+      }
       setError(data.error ?? "提交失败。");
       setIsSubmitting(false);
       return;

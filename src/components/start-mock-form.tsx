@@ -92,7 +92,15 @@ export function StartMockForm() {
     const payload = await response.json();
 
     if (!response.ok) {
-      setError(payload.error ?? "创建 Mock 失败。");
+      if (response.status === 401) {
+        router.push("/login?next=/");
+        return;
+      }
+      setError(
+        payload.code === "QUOTA_EXCEEDED"
+          ? "本月 Mock 额度已用完，请联系管理员调整额度。"
+          : payload.error ?? "创建 Mock 失败。"
+      );
       setIsSubmitting(false);
       return;
     }

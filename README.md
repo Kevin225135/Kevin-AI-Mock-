@@ -15,16 +15,30 @@
 
 ```bash
 npm install
+npm run db:generate
+npm run db:setup
 npm run dev
 ```
 
 然后访问 `http://localhost:3000`。
 
-没有配置 `DATABASE_URL` 时，应用使用内存数据仓库，适合快速体验；配置 PostgreSQL 后可执行：
+应用现在只使用 PostgreSQL，不再提供内存数据仓库回退。请先在 `.env` 配置 `DATABASE_URL`，然后执行数据库迁移和 seed，把 V1 的题库、rubric 和 demo 用户写入 PostgreSQL：
 
 ```bash
 npm run db:generate
+npm run db:setup
+```
+
+开发时如需创建新的迁移：
+
+```bash
 npm run db:migrate
+```
+
+也可以分开执行生产/本地已有迁移与种子数据：
+
+```bash
+npm run db:deploy
 npm run db:seed
 ```
 
@@ -74,7 +88,7 @@ ARK_API_KEY="你的 Ark API Key"
 - `src/components`：前端组件
 - `src/lib/domain`：核心业务流程与类型
 - `src/lib/ai`：评分 schema、prompt 与 scorer
-- `src/lib/repositories`：数据访问接口、内存仓库、Prisma 仓库
+- `src/lib/repositories`：数据访问接口与 Prisma/PostgreSQL 仓库
 - `src/lib/analytics`：埋点事件定义
 - `src/workers`：异步 worker 入口
 - `prisma`：数据库 schema 与 seed
