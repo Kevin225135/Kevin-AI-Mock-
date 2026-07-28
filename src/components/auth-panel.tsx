@@ -13,6 +13,7 @@ import {
   CardTitle
 } from "./ui/card";
 import { Input } from "./ui/input";
+import { useLocale } from "./locale-provider";
 
 type AuthPanelProps = {
   mode: "login" | "register";
@@ -20,6 +21,7 @@ type AuthPanelProps = {
 
 export function AuthPanel({ mode }: AuthPanelProps) {
   const router = useRouter();
+  const { t } = useLocale();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,31 +64,31 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-md overflow-hidden shadow-panel">
-      <CardHeader className="border-b border-border/70 bg-card/60">
-        <CardTitle className="text-2xl">
-          {isRegister ? "创建账户" : "登录账户"}
+    <Card className="mx-auto w-full max-w-md">
+      <CardHeader className="border-b border-black/[0.08]">
+        <CardTitle className="text-2xl tracking-subheading">
+          {isRegister ? t("创建账户", "Create account") : t("登录账户", "Sign in")}
         </CardTitle>
-        <CardDescription className="leading-6">
+        <CardDescription>
           {isRegister
-            ? "注册后即可获得本月免费 Mock 额度。"
-            : "登录后继续你的面试训练。"}
+            ? t("注册后即可获得本月免费 Mock 额度。", "Create an account to receive this month's free Mock quota.")
+            : t("登录后继续你的面试训练。", "Sign in to continue your interview practice.")}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <form className="space-y-4" onSubmit={submit}>
           {isRegister ? (
             <>
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-foreground">姓名</span>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-foreground">{t("姓名", "Name")}</span>
                 <Input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="可选"
+                  placeholder={t("可选", "Optional")}
                 />
               </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-foreground">目标岗位</span>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-foreground">{t("目标岗位", "Target role")}</span>
                 <Input
                   value={targetRole}
                   onChange={(event) => setTargetRole(event.target.value)}
@@ -96,8 +98,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
             </>
           ) : null}
 
-          <label className="block space-y-2">
-            <span className="text-sm font-semibold text-foreground">邮箱</span>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">{t("邮箱", "Email")}</span>
             <Input
               type="email"
               value={email}
@@ -106,8 +108,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
               required
             />
           </label>
-          <label className="block space-y-2">
-            <span className="text-sm font-semibold text-foreground">密码</span>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">{t("密码", "Password")}</span>
             <Input
               type="password"
               value={password}
@@ -119,25 +121,25 @@ export function AuthPanel({ mode }: AuthPanelProps) {
           </label>
 
           {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="rounded-button bg-destructive/8 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           ) : null}
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
-            {isRegister ? "注册并登录" : "登录"}
+            {isRegister ? t("注册并登录", "Create account") : t("登录", "Sign in")}
           </Button>
         </form>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          {isRegister ? "已有账户？" : "还没有账户？"}{" "}
+          {isRegister ? t("已有账户？", "Already have an account?") : t("还没有账户？", "New here?")}{" "}
           <Link
-            className="font-semibold text-primary hover:underline"
+            className="font-medium text-primary hover:underline"
             href={isRegister ? "/login" : "/register"}
           >
-            {isRegister ? "去登录" : "去注册"}
+            {isRegister ? t("去登录", "Sign in") : t("去注册", "Create account")}
           </Link>
         </p>
       </CardContent>

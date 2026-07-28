@@ -44,6 +44,25 @@ export type Question = {
   expectation?: string;
 };
 
+export type ResumeProject = {
+  name: string;
+  description: string;
+  technologies: string[];
+};
+
+export type ResumeProfile = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  summary?: string;
+  companies: string[];
+  roles: string[];
+  skills: string[];
+  projects: ResumeProject[];
+  education: string[];
+  createdAt: string;
+};
+
 export type AnswerRecord = {
   id: string;
   sessionId: string;
@@ -92,6 +111,7 @@ export type Report = {
 export type MockSession = {
   id: string;
   userId: string;
+  resumeId?: string;
   module: InterviewModule;
   targetRole: string;
   difficulty: Difficulty;
@@ -114,11 +134,14 @@ export type CreateSessionInput = {
   targetRole: string;
   difficulty: Difficulty;
   questionCount: number;
+  resumeId?: string;
 };
 
 export type SubmitAnswerInput = {
   questionId: string;
   content: string;
+  transcript?: string;
+  sttStatus?: "COMPLETED" | "FAILED" | "NOT_USED";
 };
 
 export type AnalyticsEventInput = {

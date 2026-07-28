@@ -11,6 +11,17 @@ import type { AppDataStore, QuestionFilter, SessionPatch } from "./store";
 
 export const prismaDataStore: AppDataStore = {
   async listQuestions(filter) {
+    const recentSessions = filter.userId
+      ? await prisma.mockSession.findMany({
+          where: { userId: filter.userId },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { selectedQuestionIds: true }
+        })
+      : [];
+    const recentlyUsedIds = new Set(
+      recentSessions.flatMap((session) => session.selectedQuestionIds)
+    );
     const rows = await prisma.questionBank.findMany({
       where: {
         module: filter.module as any
@@ -18,7 +29,11 @@ export const prismaDataStore: AppDataStore = {
       orderBy: [{ targetRole: "asc" }, { difficulty: "asc" }, { createdAt: "asc" }]
     });
 
-    return sortQuestionCandidates(rows.map(mapQuestion), filter);
+    const questions = rows.map(mapQuestion);
+    const fresh = questions.filter((question) => !recentlyUsedIds.has(question.id));
+    // Strictly exclude questions used in the latest five sessions whenever the
+    // bank still has a fresh candidate. Reuse is only a last-resort fallback.
+    return sortQuestionCandidates(fresh.length > 0 ? fresh : questions, filter);
   },
 
   async createSession(input, questions) {
@@ -26,6 +41,7 @@ export const prismaDataStore: AppDataStore = {
       const created = await tx.mockSession.create({
         data: {
           userId: input.userId,
+          resumeId: input.resumeId,
           module: input.module as any,
           targetRole: input.targetRole,
           difficulty: input.difficulty as any,
@@ -53,10 +69,26 @@ export const prismaDataStore: AppDataStore = {
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 50,
-      select: { id: true }
+      include: {
+        answers: { orderBy: { submittedAt: "asc" }, include: { score: true } },
+        scores: true,
+        report: true
+      }
     });
-    const sessions = await Promise.all(rows.map((row) => this.getSession(row.id)));
-    return sessions.filter((session): session is MockSession => Boolean(session));
+    const questionIds = [...new Set(rows.flatMap((row) => row.selectedQuestionIds))];
+    const questionRows = await prisma.questionBank.findMany({
+      where: { id: { in: questionIds } }
+    });
+    const byId = new Map(questionRows.map((question) => [question.id, question]));
+    return rows.map((row) =>
+      mapSession(
+        row,
+        row.selectedQuestionIds
+          .map((id) => byId.get(id))
+          .filter(Boolean)
+          .map((question) => mapQuestion(question))
+      )
+    );
   },
 
   async getSession(sessionId) {
@@ -99,11 +131,13 @@ export const prismaDataStore: AppDataStore = {
           followUpRound: session.followUpRound
         }
       },
-      update: { content: input.content },
+      update: { content: input.content, transcript: input.transcript, sttStatus: input.sttStatus },
       create: {
         sessionId,
         questionId: input.questionId,
         content: input.content,
+        transcript: input.transcript,
+        sttStatus: input.sttStatus,
         followUpRound: session.followUpRound
       }
     });
@@ -158,6 +192,28 @@ export const prismaDataStore: AppDataStore = {
     const updated = await this.getSession(sessionId);
     if (!updated) {
       throw new Error(`Session not found after update: ${sessionId}`);
+    }
+    return updated;
+  },
+
+  async appendQuestion(sessionId, questionId) {
+    const session = await prisma.mockSession.findUniqueOrThrow({
+      where: { id: sessionId }
+    });
+    await prisma.mockSession.update({
+      where: { id: sessionId },
+      data: {
+        selectedQuestionIds: [
+          ...session.selectedQuestionIds.slice(0, session.currentQuestionIndex + 1),
+          questionId,
+          ...session.selectedQuestionIds.slice(session.currentQuestionIndex + 1)
+        ],
+        questionCount: session.questionCount + 1
+      }
+    });
+    const updated = await this.getSession(sessionId);
+    if (!updated) {
+      throw new Error("Session not found after adding follow-up.");
     }
     return updated;
   },
@@ -262,6 +318,7 @@ function mapSession(row: any, questions: Question[]): MockSession {
   return {
     id: row.id,
     userId: row.userId,
+    resumeId: row.resumeId ?? undefined,
     module: row.module,
     targetRole: row.targetRole,
     difficulty: row.difficulty,

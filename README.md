@@ -11,6 +11,16 @@
 - 生成复盘报告、逐题反馈、改进建议、范例答案
 - 记录 `mock_start`、`question_answered`、`score_generated`、`report_view`、`mock_complete`
 
+## 简历驱动面试
+
+- 支持上传 PDF、Word（DOC/DOCX）、PNG、JPG、WebP 简历（最大 10 MB）
+- 提取简历文本，并结构化识别公司、岗位、技能、项目与教育经历
+- 基于具体简历证据生成个性化 CV-related 问题
+- 根据回答完整度和得分生成最多两轮动态追问
+- 原始文件不会落盘；数据库只保存提取文本和结构化结果
+
+图片简历使用 Tesseract OCR，首次识别对应语言时可能需要下载语言模型。
+
 ## 本地启动
 
 ```bash

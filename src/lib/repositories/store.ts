@@ -16,6 +16,7 @@ export type QuestionFilter = {
   module: InterviewModule;
   targetRole: string;
   difficulty: Difficulty;
+  userId?: string;
 };
 
 export type SessionPatch = Partial<{
@@ -45,6 +46,7 @@ export interface AppDataStore {
     sessionId: string,
     patch: SessionPatch
   ): Promise<MockSession>;
+  appendQuestion(sessionId: string, questionId: string): Promise<MockSession>;
   saveReport(report: Omit<Report, "id" | "createdAt">): Promise<Report>;
   getReport(sessionId: string): Promise<Report | null>;
   trackEvent(input: AnalyticsEventInput): Promise<void>;

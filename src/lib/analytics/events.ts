@@ -4,7 +4,10 @@ export const analyticsEvents = {
   scoreGenerated: "score_generated",
   reportView: "report_view",
   mockComplete: "mock_complete",
-  sevenDayReturn: "seven_day_return"
+  sevenDayReturn: "seven_day_return",
+  reportFeedbackSubmit: "report_feedback_submit",
+  badcaseReport: "badcase_report",
+  scoreRetryClick: "score_retry_click"
 } as const;
 
 export type AnalyticsEventName =

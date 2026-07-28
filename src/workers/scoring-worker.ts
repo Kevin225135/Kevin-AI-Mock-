@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import type { ScoringJobData } from "@/lib/queue/scoring-queue";
 import { getRedisConnectionOptions } from "@/lib/queue/redis-options";
+import { processQueuedScoring } from "@/lib/domain/mock-service";
 
 const redisUrl = process.env.REDIS_URL;
 
@@ -15,12 +16,8 @@ type ScoringJobName = "score-answer";
 const worker = new Worker<ScoringJobData, unknown, ScoringJobName>(
   "ai-scoring",
   async (job) => {
-    return {
-      ok: true,
-      message:
-        "V1 scores inline in the API route. Switch submitMockAnswer to enqueueScoringJob before enabling async scoring.",
-      data: job.data
-    };
+    const result = await processQueuedScoring(job.data);
+    return { ok: true, completed: result.completed, sessionId: result.session.id };
   },
   { connection }
 );

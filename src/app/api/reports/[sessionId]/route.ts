@@ -17,7 +17,10 @@ export async function GET(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Report not found." }, { status: 404 });
     }
 
-    return NextResponse.json({ report });
+    return NextResponse.json(
+      { report },
+      { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" } }
+    );
   } catch (error) {
     return jsonError(error, "Failed to load report.");
   }

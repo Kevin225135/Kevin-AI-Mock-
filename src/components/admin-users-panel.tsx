@@ -114,22 +114,20 @@ export function AdminUsersPanel() {
 
   if (isLoading) {
     return (
-      <Card className="shadow-panel">
-        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
+      <Card>
+        <CardContent className="flex items-center gap-2.5 p-6 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin text-primary" />
-          加载用户
+          加载用户中...
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="overflow-hidden shadow-panel">
-      <CardHeader className="border-b border-border/70 bg-card/60">
-        <Badge tone="coral" className="w-fit">
-          Admin
-        </Badge>
-        <CardTitle className="mt-2 text-2xl">用户管理</CardTitle>
+    <Card>
+      <CardHeader className="border-b border-black/[0.08]">
+        <Badge tone="coral" className="w-fit">Admin</Badge>
+        <CardTitle className="mt-2 text-xl tracking-subheading">用户管理</CardTitle>
         <CardDescription>管理账户状态、角色、套餐和本月额度。</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
@@ -137,8 +135,8 @@ export function AdminUsersPanel() {
           <p
             className={
               error
-                ? "mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-                : "mb-4 rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary"
+                ? "mb-4 rounded-button bg-destructive/8 px-3 py-2 text-sm text-destructive"
+                : "mb-4 rounded-button bg-primary/8 px-3 py-2 text-sm text-primary"
             }
           >
             {error ?? message}
@@ -152,10 +150,10 @@ export function AdminUsersPanel() {
             return (
               <div
                 key={user.id}
-                className="grid gap-3 rounded-md border border-border/80 bg-background/50 p-4 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr]"
+                className="grid gap-3 rounded-button border border-black/[0.08] bg-secondary/20 p-4 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr]"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink">{user.email}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{user.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {user.name ?? "未填写姓名"} / {user.targetRole ?? "未填写岗位"}
                   </p>
@@ -165,9 +163,9 @@ export function AdminUsersPanel() {
                 </div>
 
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground">角色</span>
+                  <span className="text-xs font-medium text-muted-foreground">角色</span>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
+                    className="h-10 w-full rounded-button border border-black/10 bg-white px-3 text-sm transition-colors focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/15"
                     value={user.role}
                     disabled={busy}
                     onChange={(event) =>
@@ -180,9 +178,9 @@ export function AdminUsersPanel() {
                 </label>
 
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground">状态</span>
+                  <span className="text-xs font-medium text-muted-foreground">状态</span>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
+                    className="h-10 w-full rounded-button border border-black/10 bg-white px-3 text-sm transition-colors focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/15"
                     value={user.status}
                     disabled={busy}
                     onChange={(event) =>
@@ -195,9 +193,9 @@ export function AdminUsersPanel() {
                 </label>
 
                 <label className="space-y-1">
-                  <span className="text-xs font-semibold text-muted-foreground">套餐</span>
+                  <span className="text-xs font-medium text-muted-foreground">套餐</span>
                   <select
-                    className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
+                    className="h-10 w-full rounded-button border border-black/10 bg-white px-3 text-sm transition-colors focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring/15"
                     value={user.planCode}
                     disabled={busy}
                     onChange={(event) => updateUser(user.id, { planCode: event.target.value })}

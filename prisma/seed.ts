@@ -116,6 +116,45 @@ async function main() {
       }
     });
   }
+
+  if ((await prisma.evalSample.count()) === 0) {
+    await prisma.evalSample.createMany({
+      data: [
+        {
+          module: "BEHAVIORAL",
+          targetRole: "Product Manager",
+          question: "Tell me about a conflict you resolved.",
+          answer: "背景是工程和业务对上线范围有冲突。我的任务是保证核心价值按时交付。我先用用户影响和开发成本排优先级，组织双方确认最小范围，并把其余需求放入下一迭代。最终按期上线，核心流程转化率提升 12%。复盘后我建立了统一的优先级模板。",
+          humanScore: 88,
+          notes: "High-quality STAR answer"
+        },
+        {
+          module: "BEHAVIORAL",
+          targetRole: "Product Manager",
+          question: "Tell me about a conflict you resolved.",
+          answer: "我们有一些分歧，我积极沟通，最后大家达成了一致，项目也顺利完成了。",
+          humanScore: 42,
+          notes: "Vague answer without evidence"
+        },
+        {
+          module: "TECHNICAL",
+          targetRole: "Software Engineer",
+          question: "How would you design an API rate limiter?",
+          answer: "I would use a token bucket per tenant in Redis, with atomic Lua scripts for distributed consistency. Free and enterprise plans receive different refill rates. I would define fail-open or fail-closed behavior by endpoint risk, emit saturation metrics, and load test burst traffic before rollout.",
+          humanScore: 90,
+          notes: "Strong technical depth"
+        },
+        {
+          module: "MARKET",
+          targetRole: "Investment Banking Analyst",
+          question: "How can rates affect M&A?",
+          answer: "利率下降可能降低融资成本并改善估值，但影响取决于信用利差、行业现金流和买卖双方估值预期。我会分别观察杠杆收购融资、战略买家资产负债表和监管环境。",
+          humanScore: 82,
+          notes: "Balanced market view"
+        }
+      ]
+    });
+  }
 }
 
 main()

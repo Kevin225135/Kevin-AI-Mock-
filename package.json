@@ -14,7 +14,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma migrate deploy && tsx prisma/seed.ts",
     "test": "node --test --import tsx \"src/**/*.test.ts\"",
-    "worker:score": "tsx src/workers/scoring-worker.ts"
+    "worker:score": "tsx src/workers/scoring-worker.ts",
+    "eval:run": "tsx --env-file=.env.local scripts/run-evals.ts",
+    "eval:seed": "tsx --env-file=.env.local scripts/seed-evals.ts",
+    "eval:annotate": "tsx --env-file=.env.local scripts/annotate-eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.8.0",
@@ -24,12 +27,17 @@
     "bullmq": "^5.50.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
     "ioredis": "^5.6.1",
     "lucide-react": "^0.468.0",
+    "mammoth": "^1.12.0",
     "next": "^15.3.0",
+    "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.5.4",
+    "tesseract.js": "^7.0.0",
+    "word-extractor": "^1.0.4",
     "zod": "^3.25.0"
   },
   "devDependencies": {

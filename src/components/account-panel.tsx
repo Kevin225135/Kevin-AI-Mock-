@@ -128,38 +128,36 @@ export function AccountPanel() {
 
   if (isLoading) {
     return (
-      <Card className="shadow-panel">
-        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
+      <Card>
+        <CardContent className="flex items-center gap-2.5 p-6 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin text-primary" />
-          加载账户
+          加载账户中...
         </CardContent>
       </Card>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
-    <div className="grid w-full gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-      <div className="space-y-5">
-        <Card className="overflow-hidden shadow-panel">
-          <CardHeader className="border-b border-border/70 bg-card/60">
+    <div className="grid w-full gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="border-b border-black/[0.08]">
             <Badge tone={user.role === "ADMIN" ? "coral" : "teal"} className="w-fit">
               {user.role}
             </Badge>
-            <CardTitle className="mt-2 text-2xl">账户资料</CardTitle>
+            <CardTitle className="mt-2 text-xl tracking-subheading">账户资料</CardTitle>
             <CardDescription>{user.email}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <form className="space-y-4" onSubmit={saveProfile}>
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-foreground">姓名</span>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-foreground">姓名</span>
                 <Input value={name} onChange={(event) => setName(event.target.value)} />
               </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-semibold text-foreground">目标岗位</span>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-foreground">目标岗位</span>
                 <Input
                   value={targetRole}
                   onChange={(event) => setTargetRole(event.target.value)}
@@ -173,9 +171,9 @@ export function AccountPanel() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden shadow-panel">
-          <CardHeader className="border-b border-border/70 bg-card/60">
-            <CardTitle>修改密码</CardTitle>
+        <Card>
+          <CardHeader className="border-b border-black/[0.08]">
+            <CardTitle className="tracking-card-title">修改密码</CardTitle>
             <CardDescription>修改后需要重新登录。</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -203,10 +201,10 @@ export function AccountPanel() {
         </Card>
       </div>
 
-      <div className="space-y-5">
-        <Card className="overflow-hidden shadow-panel">
-          <CardHeader className="border-b border-border/70 bg-card/60">
-            <CardTitle>本月额度</CardTitle>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="border-b border-black/[0.08]">
+            <CardTitle className="tracking-card-title">本月额度</CardTitle>
             <CardDescription>
               {usage
                 ? `${new Date(usage.periodStart).toLocaleDateString()} - ${new Date(
@@ -218,20 +216,20 @@ export function AccountPanel() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
-                <p className="text-3xl font-semibold text-ink">{usage?.planCode ?? "-"}</p>
-                <p className="mt-1 text-xs text-muted-foreground">套餐</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{usage?.planCode ?? "-"}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">套餐</p>
               </div>
               <div>
-                <p className="text-3xl font-semibold text-ink">
+                <p className="text-2xl font-bold tabular-nums text-foreground">
                   {usage?.sessionsUsed ?? 0}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">已用</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">已用</p>
               </div>
               <div>
-                <p className="text-3xl font-semibold text-ink">
+                <p className="text-2xl font-bold tabular-nums text-foreground">
                   {usage?.remaining === null ? "∞" : usage?.remaining ?? 0}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">剩余</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">剩余</p>
               </div>
             </div>
           </CardContent>
@@ -241,24 +239,24 @@ export function AccountPanel() {
           <p
             className={
               error
-                ? "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-                : "rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary"
+                ? "rounded-button bg-destructive/8 px-3 py-2 text-sm text-destructive"
+                : "rounded-button bg-primary/8 px-3 py-2 text-sm text-primary"
             }
           >
             {error ?? message}
           </p>
         ) : null}
 
-        <Card className="overflow-hidden shadow-panel">
-          <CardHeader className="border-b border-border/70 bg-card/60">
-            <CardTitle>历史 Mock</CardTitle>
+        <Card>
+          <CardHeader className="border-b border-black/[0.08]">
+            <CardTitle className="tracking-card-title">历史 Mock</CardTitle>
             <CardDescription>最近 50 场训练。</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {sessions.length === 0 ? (
               <p className="text-sm text-muted-foreground">还没有历史场次。</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {sessions.map((session) => (
                   <Link
                     key={session.id}
@@ -267,13 +265,13 @@ export function AccountPanel() {
                         ? `/report/${session.id}`
                         : `/mock/${session.id}`
                     }
-                    className="flex items-center justify-between gap-3 rounded-md border border-border/80 bg-background/50 p-3 transition hover:bg-card"
+                    className="flex items-center justify-between gap-3 rounded-button border border-black/[0.08] bg-secondary/20 p-3 transition-colors hover:bg-secondary"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-ink">
+                      <span className="block truncate text-sm font-medium text-foreground">
                         {session.targetRole} / {session.module}
                       </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
                         {new Date(session.createdAt).toLocaleString()}
                       </span>
                     </span>

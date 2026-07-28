@@ -73,11 +73,34 @@ model User {
   usagePeriods  UsagePeriod[]
   usageLedger   UsageLedger[]
   sessions      MockSession[]
+  resumes       Resume[]
   events        Event[]
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model Resume {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName       String        @map("file_name")
+  mimeType       String        @map("mime_type")
+  rawText        String        @map("raw_text")
+  summary        String?
+  companies      String[]
+  roles          String[]
+  skills         String[]
+  projects       Json
+  education      Json
+  parseStatus    String        @default("COMPLETED") @map("parse_status")
+  sessions       MockSession[]
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@map("resumes")
 }
 
 model AuthSession {
@@ -158,7 +181,9 @@ model QuestionBank {
 model MockSession {
   id                  String        @id @default(cuid())
   userId              String        @map("user_id")
-  user                User          @relation(fields: [userId], references: [id])
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId            String?       @map("resume_id")
+  resume              Resume?       @relation(fields: [resumeId], references: [id], onDelete: SetNull)
   module              InterviewModule
   targetRole          String        @map("target_role")
   difficulty          Difficulty    @default(MEDIUM)
@@ -231,6 +256,8 @@ model Report {
   dimensionAverages Json        @map("dimension_averages")
   questionFeedback  Json        @map("question_feedback")
   nextPracticePlan  String[]    @map("next_practice_plan")
+  shareToken        String?     @unique @map("share_token")
+  isPublic          Boolean     @default(false) @map("is_public")
   createdAt         DateTime    @default(now()) @map("created_at")
 
   @@map("reports")
@@ -273,8 +300,27 @@ model EvalSample {
   answer      String
   humanScore  Int             @map("human_score")
   notes       String?
+  category    String          @default("BASIC")
+  expectedFollowUp String?    @map("expected_follow_up")
+  annotations EvalAnnotation[]
   createdAt   DateTime        @default(now()) @map("created_at")
 
   @@index([module, targetRole])
   @@map("eval_samples")
+}
+
+model EvalAnnotation {
+  id          String     @id @default(cuid())
+  sampleId    String     @map("sample_id")
+  sample      EvalSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  annotator   String
+  totalScore  Int        @map("total_score")
+  dimensions  Json?
+  shouldFollowUp String?  @map("should_follow_up")
+  notes       String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@unique([sampleId, annotator])
+  @@index([sampleId, createdAt])
+  @@map("eval_annotations")
 }

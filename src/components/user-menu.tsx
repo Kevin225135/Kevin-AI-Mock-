@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LogOut, Shield, UserRound } from "lucide-react";
+import { BarChart3, History, LogOut, Shield, TrendingUp, UserRound } from "lucide-react";
 import type { CurrentUser } from "@/lib/domain/types";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -92,13 +92,13 @@ export function UserMenu() {
         </Badge>
       ) : null}
       {user.role === "ADMIN" ? (
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/admin/users">
-            <Shield className="size-4" />
-            管理
-          </Link>
-        </Button>
+        <>
+          <Button asChild variant="ghost" size="sm"><Link href="/admin/analytics"><BarChart3 className="size-4" />看板</Link></Button>
+          <Button asChild variant="ghost" size="sm"><Link href="/admin/users"><Shield className="size-4" />管理</Link></Button>
+        </>
       ) : null}
+      <Button asChild variant="ghost" size="sm"><Link href="/history"><History className="size-4" />历史</Link></Button>
+      <Button asChild variant="ghost" size="sm"><Link href="/progress"><TrendingUp className="size-4" />进步</Link></Button>
       <Button asChild variant="ghost" size="sm">
         <Link href="/account">
           <UserRound className="size-4" />

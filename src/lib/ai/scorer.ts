@@ -17,7 +17,8 @@ const starSignals = [
 const logicSignals = [
   /first|second|third|首先|其次|最后|第一|第二|第三/i,
   /because|therefore|so that|因此|所以|原因|结论/i,
-  /trade.?off|priority|权衡|优先级|取舍/i
+  /trade.?off|priority|权衡|优先级|取舍/i,
+  /depends|however|respectively|取决于|但是|但|分别|一方面|另一方面/i
 ];
 
 const depthSignals = [
@@ -251,20 +252,40 @@ function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {
   const wordishCount = answer.split(/\s+/).filter(Boolean).length;
   const density = Math.max(length, wordishCount * 6);
 
-  const starCompleteness = clampScore(
-    1 + countMatches(answer, starSignals) + lengthBonus(density, [220, 480])
+  const domainSignals = [
+    /trade.?off|alternative|risk|metric|validate|monitor|权衡|替代|风险|指标|验证|监控/i,
+    /user|customer|business|system|market|用户|客户|业务|系统|市场/i,
+    /rate|financing|valuation|cash.?flow|regulation|利率|融资|估值|现金流|监管|行业/i
+  ];
+  const isExperienceModule =
+    input.question.module === "BEHAVIORAL" || input.question.module === "CV_RELATED";
+  let starCompleteness = clampScore(
+    isExperienceModule
+      ? 1 + countMatches(answer, starSignals) + lengthBonus(density, [120, 260])
+      : 2 + countMatches(answer, domainSignals) + lengthBonus(density, [100, 220])
   );
-  const logicStructure = clampScore(
-    1 + countMatches(answer, logicSignals) + lengthBonus(density, [180, 420])
+  let logicStructure = clampScore(
+    2 + countMatches(answer, logicSignals) + lengthBonus(density, [100, 220])
   );
-  const contentDepth = clampScore(
-    1 + countMatches(answer, depthSignals) + lengthBonus(density, [280, 620])
+  let contentDepth = clampScore(
+    1 +
+      countMatches(answer, depthSignals) +
+      countMatches(answer, domainSignals) +
+      lengthBonus(density, [100, 240])
   );
   const communication = clampScore(
-    2 +
-      lengthBonus(density, [160, 360]) +
+    3 +
+      lengthBonus(density, [80, 220]) +
       (communicationPenaltySignals.some((signal) => signal.test(answer)) ? -1 : 1)
   );
+  if (
+    input.question.module === "MARKET" &&
+    /(利率|融资|估值|现金流|监管|行业|rate|financing|valuation|regulation)/i.test(answer)
+  ) {
+    starCompleteness = Math.max(starCompleteness, 4);
+    logicStructure = Math.max(logicStructure, 4);
+    contentDepth = Math.max(contentDepth, 4);
+  }
 
   const dimensions = {
     starCompleteness,
