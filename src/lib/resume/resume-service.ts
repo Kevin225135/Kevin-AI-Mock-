@@ -13,6 +13,7 @@ import {
 } from "@/lib/rag/retriever";
 import type { RagQuestionContext } from "@/lib/domain/types";
 import { searchKnowledge, type KnowledgeDomain } from "@/lib/knowledge/knowledge-service";
+import { createLlmFollowUp, refineQuestionsWithLlm } from "@/lib/rag/dual-source";
 
 export async function uploadResume(file: File, actor: CurrentUser) {
   const parsed = await parseResumeFile(file);
@@ -77,12 +78,13 @@ export async function createResumeQuestions(input: {
     difficulty: input.difficulty,
     limit: input.questionCount
   });
+  const researchQuery = [
+    input.targetRole,
+    ...resume.skills,
+    ...projects.flatMap((project) => [project.name, project.description, ...project.technologies])
+  ].join(" ");
   const knowledge = await searchKnowledge({
-    query: [
-      input.targetRole,
-      ...resume.skills,
-      ...projects.flatMap((project) => [project.name, project.description, ...project.technologies])
-    ].join(" "),
+    query: researchQuery,
     domain: inferKnowledgeDomain(input.targetRole),
     limit: Math.max(input.questionCount, 5)
   });
@@ -102,6 +104,15 @@ export async function createResumeQuestions(input: {
       candidate.expectation += ` 知识库校准主题：${matches[0].titleZh} / ${matches[0].titleEn}。`;
     }
   });
+  const dualSource = await refineQuestionsWithLlm({
+    query: researchQuery,
+    targetRole: input.targetRole,
+    candidates: retrieval.selected
+  });
+  dualSource.candidates.forEach((candidate) => {
+    candidate.context.webEvidence = dualSource.webEvidence;
+  });
+  retrieval.selected = dualSource.candidates;
 
   await prisma.ragRetrievalTrace.create({
     data: {
@@ -196,7 +207,8 @@ export async function createResumeFollowUp(input: {
       },
       selected: {
         decision: analysis.decision,
-        followUpQuestion: analysis.followUpQuestion ?? null
+        followUpQuestion: analysis.followUpQuestion ?? null,
+        webEvidence: context?.webEvidence ?? []
       },
       latencyMs: Math.max(0, Math.round(performance.now() - startedAt))
     }
@@ -205,6 +217,12 @@ export async function createResumeFollowUp(input: {
   if (analysis.decision === "CLOSE" || !analysis.followUpQuestion) {
     return null;
   }
+  const llmFollowUp = await createLlmFollowUp({
+    question: question.prompt,
+    answer: input.answer,
+    fallback: analysis.followUpQuestion,
+    context
+  });
 
   const row = await prisma.questionBank.create({
     data: {
@@ -212,7 +230,7 @@ export async function createResumeFollowUp(input: {
       module: "CV_RELATED",
       targetRole: input.targetRole,
       difficulty: input.difficulty,
-      prompt: analysis.followUpQuestion,
+      prompt: llmFollowUp.followUpQuestion,
       expectation: `RAG 动态追问第 ${input.round + 1} 轮；缺失信号：${analysis.missingSignals.join("、")}。不得补写简历中不存在的事实。`,
       keywords: analysis.matchedKeywords,
       retrievalContext: {
@@ -225,7 +243,11 @@ export async function createResumeFollowUp(input: {
         }),
         parentQuestionId: question.id,
         coveredSignals: analysis.coveredSignals,
-        missingSignals: analysis.missingSignals
+        missingSignals: analysis.missingSignals,
+        webEvidence: [
+          ...(context?.webEvidence ?? []),
+          ...llmFollowUp.webEvidence
+        ]
       } as any
     }
   });
@@ -244,7 +266,9 @@ function summarizeCandidate(candidate: {
     evidence: candidate.context.evidence.map((item) => ({
       source: item.source,
       matchedKeywords: item.matchedKeywords
-    }))
+    })),
+    knowledgeEvidence: candidate.context.knowledgeEvidence ?? [],
+    webEvidence: candidate.context.webEvidence ?? []
   };
 }
 

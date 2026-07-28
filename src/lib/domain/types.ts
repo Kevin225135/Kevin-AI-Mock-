@@ -59,6 +59,13 @@ export type RagQuestionContext = {
     sourceUrl: string;
     score: number;
   }>;
+  webEvidence?: Array<{
+    title: string;
+    url: string;
+    snippet: string;
+    publishedAt?: string;
+    retrievedAt: string;
+  }>;
 };
 
 export type ResumeProject = {
