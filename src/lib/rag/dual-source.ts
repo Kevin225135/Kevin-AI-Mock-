@@ -72,12 +72,19 @@ async function callArkRag(prompt: string, useWeb: boolean): Promise<{
   json: { questions?: Array<{ index: number; prompt: string; expectation?: string }>; followUpQuestion?: string };
   webEvidence: WebEvidence[];
 } | null> {
-  const apiKey = process.env.ARK_API_KEY ?? process.env.AI_API_KEY;
+  const useArk = process.env.AI_PROVIDER === "ark";
+  const apiKey = useArk
+    ? process.env.ARK_API_KEY ?? process.env.AI_API_KEY
+    : process.env.AI_API_KEY ?? process.env.DASHSCOPE_API_KEY;
   if (!apiKey || process.env.RAG_LLM_ENABLED === "false") return null;
-  const baseUrl = (process.env.ARK_API_BASE_URL ?? process.env.AI_API_BASE_URL ??
-    "https://ark.cn-beijing.volces.com/api/v3").replace(/\/+$/, "");
+  const baseUrl = (useArk
+    ? process.env.ARK_API_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3"
+    : process.env.AI_API_BASE_URL ?? "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  ).replace(/\/+$/, "");
   const body: Record<string, unknown> = {
-    model: process.env.ARK_MODEL ?? process.env.AI_MODEL ?? "doubao-seed-2-0-pro-260215",
+    model: useArk
+      ? process.env.ARK_MODEL ?? "doubao-seed-2-0-pro-260215"
+      : process.env.AI_MODEL ?? "qwen3.5-plus",
     input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }]
   };
   if (useWeb && process.env.RAG_WEB_SEARCH_ENABLED !== "false") {
