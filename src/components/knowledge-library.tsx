@@ -87,6 +87,7 @@ export function KnowledgeLibrary() {
           <option value="AI产品">AI产品全流程 / AI Product</option>
           <option value="AI基础知识">AI基础知识 / AI Fundamentals</option>
           <option value="Vibe Coding">Vibe Coding实操</option>
+          <option value="本地资料">暑期实习与秋招资料 / Local Materials</option>
         </select>
         <span className="text-sm text-muted-foreground">显示 {entries.length} / 共 {total} 条</span>
       </div>
@@ -118,10 +119,16 @@ export function KnowledgeLibrary() {
             <div className="mt-4 flex flex-wrap gap-1.5">
               {entry.keywords.slice(0, 5).map((keyword) => <span key={keyword} className="rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-500">#{keyword}</span>)}
             </div>
-            <a href={entry.sourceUrl} target="_blank" rel="noreferrer"
-              className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
-              来源 / Source: {entry.sourceTitle}<ExternalLink className="size-3" />
-            </a>
+            {entry.sourceUrl.startsWith("http") ? (
+              <a href={entry.sourceUrl} target="_blank" rel="noreferrer"
+                className="mt-5 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                来源 / Source: {entry.sourceTitle}<ExternalLink className="size-3" />
+              </a>
+            ) : (
+              <p className="mt-5 text-xs font-medium text-muted-foreground">
+                本地来源 / Local source: {entry.sourceTitle}
+              </p>
+            )}
           </article>
         ))}
       </div>
