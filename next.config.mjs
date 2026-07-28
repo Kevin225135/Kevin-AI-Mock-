@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone"
+  output: "standalone",
+  serverExternalPackages: [
+    "mammoth",
+    "pdf-parse",
+    "tesseract.js",
+    "word-extractor"
+  ]
 };
 
 export default nextConfig;

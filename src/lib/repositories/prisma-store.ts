@@ -265,7 +265,9 @@ function mapQuestion(row: any): Question {
     targetRole: row.targetRole,
     difficulty: row.difficulty,
     prompt: row.prompt,
-    expectation: row.expectation ?? undefined
+    expectation: row.expectation ?? undefined,
+    keywords: row.keywords ?? [],
+    retrievalContext: row.retrievalContext ?? undefined
   };
 }
 

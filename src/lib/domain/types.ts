@@ -42,6 +42,16 @@ export type Question = {
   difficulty: Difficulty;
   prompt: string;
   expectation?: string;
+  keywords?: string[];
+  retrievalContext?: RagQuestionContext;
+};
+
+export type RagQuestionContext = {
+  competencyId: string;
+  competencyLabel: string;
+  evidence: Array<{ text: string; source: string; matchedKeywords: string[] }>;
+  expectedSignals: string[];
+  researchSources: string[];
 };
 
 export type ResumeProject = {

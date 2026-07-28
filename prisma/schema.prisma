@@ -75,6 +75,7 @@ model User {
   sessions      MockSession[]
   resumes       Resume[]
   events        Event[]
+  ragTraces     RagRetrievalTrace[]
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
@@ -96,6 +97,7 @@ model Resume {
   education      Json
   parseStatus    String        @default("COMPLETED") @map("parse_status")
   sessions       MockSession[]
+  ragTraces      RagRetrievalTrace[]
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
@@ -168,6 +170,8 @@ model QuestionBank {
   difficulty      Difficulty       @default(MEDIUM)
   prompt          String
   expectation     String?
+  keywords        String[]         @default([])
+  retrievalContext Json?           @map("retrieval_context")
   rubricVersionId String?          @map("rubric_version_id")
   rubricVersion   RubricVersion?   @relation(fields: [rubricVersionId], references: [id])
   answers         Answer[]
@@ -176,6 +180,28 @@ model QuestionBank {
 
   @@index([module, targetRole, difficulty])
   @@map("question_bank")
+}
+
+model RagRetrievalTrace {
+  id           String   @id @default(cuid())
+  userId       String?  @map("user_id")
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId     String?  @map("resume_id")
+  resume       Resume?  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  sessionId    String?  @map("session_id")
+  session      MockSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phase        String
+  query        String
+  keywords     String[]
+  candidates   Json
+  selected     Json
+  latencyMs    Int      @map("latency_ms")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([resumeId, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("rag_retrieval_traces")
 }
 
 model MockSession {
@@ -196,6 +222,7 @@ model MockSession {
   scores              AiScore[]
   report              Report?
   events              Event[]
+  ragTraces           RagRetrievalTrace[]
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
 

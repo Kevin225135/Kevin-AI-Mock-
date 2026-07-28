@@ -208,24 +208,28 @@ async function finalizeSavedAnswer({
   });
 
   const followUpDecision = decideFollowUp(input.content, score.totalScore, existing.followUpRound);
-  if (followUpDecision !== "CLOSE") {
-    const followUpId = existing.resumeId
-      ? await createResumeFollowUp({
-          resumeId: existing.resumeId, targetRole: existing.targetRole,
-          difficulty: existing.difficulty, previousQuestion: expectedQuestion.prompt,
-          answer: input.content, round: existing.followUpRound
-        })
-      : await createFollowUpQuestion({
+  const followUpId = existing.resumeId
+    ? await createResumeFollowUp({
+        sessionId: existing.id,
+        resumeId: existing.resumeId,
+        targetRole: existing.targetRole,
+        difficulty: existing.difficulty,
+        previousQuestionId: expectedQuestion.id,
+        answer: input.content,
+        round: existing.followUpRound
+      })
+    : followUpDecision !== "CLOSE"
+      ? await createFollowUpQuestion({
           module: existing.module, targetRole: existing.targetRole,
           difficulty: existing.difficulty, originalPrompt: expectedQuestion.prompt,
           answer: input.content, round: existing.followUpRound, decision: followUpDecision
-        });
-    if (followUpId) {
-      await store.appendQuestion(existing.id, followUpId);
-      await store.updateSession(existing.id, {
-        followUpRound: existing.followUpRound + 1
-      });
-    }
+        })
+      : null;
+  if (followUpId) {
+    await store.appendQuestion(existing.id, followUpId);
+    await store.updateSession(existing.id, {
+      followUpRound: existing.followUpRound + 1
+    });
   }
 
   const refreshed = await store.getSession(existing.id);
@@ -236,7 +240,10 @@ async function finalizeSavedAnswer({
   const isComplete = nextIndex >= refreshed.questions.length;
   const progressed = await store.updateSession(existing.id, {
     status: isComplete ? "COMPLETED" : "IN_PROGRESS",
-    currentQuestionIndex: isComplete ? existing.currentQuestionIndex : nextIndex
+    currentQuestionIndex: isComplete ? existing.currentQuestionIndex : nextIndex,
+    // A follow-up chain owns its own two-round budget. Reset before the next
+    // base question instead of leaking the previous question's round count.
+    followUpRound: followUpId ? existing.followUpRound + 1 : 0
   });
   const latest = await store.getSession(existing.id);
 

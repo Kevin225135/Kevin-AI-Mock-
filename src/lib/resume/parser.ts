@@ -1,4 +1,5 @@
 import type { ResumeProject } from "@/lib/domain/types";
+import { extractTaxonomyKeywords } from "@/lib/rag/keyword-library";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const supportedExtensions = [
@@ -139,14 +140,15 @@ function cleanText(text: string) {
 
 function structureResume(rawText: string): ParsedResume {
   const lines = rawText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const skills = unique(
-    matchTerms(rawText, [
+  const skills = unique([
+    ...matchTerms(rawText, [
       "JavaScript", "TypeScript", "Python", "Java", "C++", "SQL", "React",
       "Next.js", "Node.js", "AWS", "Azure", "Docker", "Kubernetes", "Figma",
       "Excel", "PowerPoint", "Tableau", "Power BI", "Machine Learning",
       "Product Management", "Financial Modeling", "Valuation", "Strategy"
-    ])
-  );
+    ]),
+    ...extractTaxonomyKeywords(rawText)
+  ]);
   const roles = unique(
     lines.filter((line) =>
       /(manager|engineer|analyst|consultant|developer|designer|intern|director|associate|经理|工程师|分析师|顾问|实习)/i.test(line)

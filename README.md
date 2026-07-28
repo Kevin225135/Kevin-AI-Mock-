@@ -5,8 +5,8 @@
 ## V1 闭环
 
 - 选择模块、岗位、难度与题量
-- 创建 mock session 并返回固定题库题目
-- 文本作答，每题一问一答
+- 创建 mock session，按岗位筛选题库或检索简历证据生成问题
+- 文本或语音作答，支持最多两轮动态追问
 - 基于 rubric 输出结构化评分 JSON
 - 生成复盘报告、逐题反馈、改进建议、范例答案
 - 记录 `mock_start`、`question_answered`、`score_generated`、`report_view`、`mock_complete`
@@ -15,9 +15,14 @@
 
 - 支持上传 PDF、Word（DOC/DOCX）、PNG、JPG、WebP 简历（最大 10 MB）
 - 提取简历文本，并结构化识别公司、岗位、技能、项目与教育经历
-- 基于具体简历证据生成个性化 CV-related 问题
-- 根据回答完整度和得分生成最多两轮动态追问
+- 使用中英文岗位能力关键词库检索具体简历证据，生成可追溯的 CV-related 问题
+- 保存问题使用的能力、关键词、简历证据和 Retrieval Trace
+- 回答后进行第二轮关键词与证据信号检索，根据缺口澄清、深挖或收束
 - 原始文件不会落盘；数据库只保存提取文本和结构化结果
+
+关键词体系参考 O*NET、ESCO 和职业技能抽取研究。架构、资料来源、
+检索流程及后续 pgvector 路线见
+[`docs/RAG_RESEARCH_AND_DESIGN.md`](docs/RAG_RESEARCH_AND_DESIGN.md)。
 
 图片简历使用 Tesseract OCR，首次识别对应语言时可能需要下载语言模型。
 
@@ -98,6 +103,7 @@ ARK_API_KEY="你的 Ark API Key"
 - `src/components`：前端组件
 - `src/lib/domain`：核心业务流程与类型
 - `src/lib/ai`：评分 schema、prompt 与 scorer
+- `src/lib/rag`：岗位能力词库、简历检索、回答缺口分析与追问决策
 - `src/lib/repositories`：数据访问接口与 Prisma/PostgreSQL 仓库
 - `src/lib/analytics`：埋点事件定义
 - `src/workers`：异步 worker 入口
