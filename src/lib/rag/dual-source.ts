@@ -10,7 +10,7 @@ export type WebEvidence = {
 };
 
 export function shouldSearchWeb(value: string) {
-  return /(最新|最近|近期|当前|今天|本周|本月|今年|市场新闻|market news|latest|recent|current|today|202[5-9]|上市规则|监管政策|IPO案例|财报|估值水平)/i.test(value);
+  return /(最新|最近|近期|当前|今天|本周|本月|今年|市场新闻|market news|latest|recent|current|today|上市规则|监管政策|IPO案例|财报|估值水平)/i.test(value);
 }
 
 export async function refineQuestionsWithLlm(input: {
@@ -85,7 +85,8 @@ async function callArkRag(prompt: string, useWeb: boolean): Promise<{
     model: useArk
       ? process.env.ARK_MODEL ?? "doubao-seed-2-0-pro-260215"
       : process.env.AI_MODEL ?? "qwen3.5-plus",
-    input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }]
+    input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }],
+    enable_thinking: false
   };
   if (useWeb && process.env.RAG_WEB_SEARCH_ENABLED !== "false") {
     body.tools = [{ type: "web_search" }];
@@ -109,7 +110,7 @@ async function callArkRag(prompt: string, useWeb: boolean): Promise<{
 function request(body: Record<string, unknown>, baseUrl: string, apiKey: string) {
   return fetch(`${baseUrl}/responses`, {
     method: "POST",
-    signal: AbortSignal.timeout(Number(process.env.RAG_PROVIDER_TIMEOUT_MS) || 20000),
+    signal: AbortSignal.timeout(Number(process.env.RAG_PROVIDER_TIMEOUT_MS) || 8000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body)
   });

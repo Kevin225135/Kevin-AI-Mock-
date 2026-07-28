@@ -151,35 +151,42 @@ export function StartMockForm() {
   async function startMock() {
     setIsSubmitting(true);
     setError(null);
-
-    const response = await fetch("/api/mock-sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        module: resumeId ? "CV_RELATED" : module,
-        targetRole,
-        difficulty,
-        questionCount,
-        resumeId: resumeId || undefined
-      })
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        router.push("/login?next=/");
+    try {
+      const response = await fetch("/api/mock-sessions", {
+        method: "POST",
+        signal: AbortSignal.timeout(30000),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          module: resumeId ? "CV_RELATED" : module,
+          targetRole,
+          difficulty,
+          questionCount,
+          resumeId: resumeId || undefined
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push("/login?next=/");
+          return;
+        }
+        setError(
+          payload.code === "QUOTA_EXCEEDED"
+            ? "本月 Mock 额度已用完，请联系管理员调整额度。"
+            : payload.error ?? "创建 Mock 失败。"
+        );
         return;
       }
+      router.push(`/mock/${payload.session.id}`);
+    } catch (requestError) {
       setError(
-        payload.code === "QUOTA_EXCEEDED"
-          ? "本月 Mock 额度已用完，请联系管理员调整额度。"
-          : payload.error ?? "创建 Mock 失败。"
+        requestError instanceof DOMException && requestError.name === "TimeoutError"
+          ? "题目生成超时，请重试；系统将自动使用本地知识库。"
+          : "网络请求失败，请检查服务后重试。"
       );
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    router.push(`/mock/${payload.session.id}`);
   }
 
   const selectedModule = moduleOptions.find((option) => option.value === module);

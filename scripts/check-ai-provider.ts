@@ -22,7 +22,13 @@ async function check(path: string, body: object) {
     status: response.status,
     ok: response.ok,
     errorCode: payload?.error?.code ?? null,
-    errorType: payload?.error?.type ?? null
+    errorType: payload?.error?.type ?? null,
+    hasOutput: Boolean(
+      payload?.choices?.[0]?.message?.content ||
+      payload?.output_text ||
+      payload?.output?.some?.((item: any) => item?.content?.length)
+    ),
+    sourceCount: JSON.stringify(payload).match(/https?:\\?\/\\?\//g)?.length ?? 0
   };
 }
 
