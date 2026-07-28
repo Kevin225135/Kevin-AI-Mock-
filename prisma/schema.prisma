@@ -204,6 +204,34 @@ model RagRetrievalTrace {
   @@map("rag_retrieval_traces")
 }
 
+model KnowledgeEntry {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  domain           String
+  category         String
+  titleZh          String   @map("title_zh")
+  titleEn          String   @map("title_en")
+  summaryZh        String   @map("summary_zh")
+  summaryEn        String   @map("summary_en")
+  contentZh        String   @map("content_zh")
+  contentEn        String   @map("content_en")
+  keywords         String[]
+  competencies     String[]
+  sourceTitle      String   @map("source_title")
+  sourceUrl        String   @map("source_url")
+  researchRound    Int      @map("research_round")
+  embeddingModel   String   @map("embedding_model")
+  embedding        Float[]
+  searchVector     Unsupported("tsvector") @default(dbgenerated("''::tsvector")) @map("search_vector")
+  isPublished      Boolean  @default(true) @map("is_published")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([domain, category])
+  @@index([isPublished, updatedAt])
+  @@map("knowledge_entries")
+}
+
 model MockSession {
   id                  String        @id @default(cuid())
   userId              String        @map("user_id")

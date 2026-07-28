@@ -52,6 +52,13 @@ export type RagQuestionContext = {
   evidence: Array<{ text: string; source: string; matchedKeywords: string[] }>;
   expectedSignals: string[];
   researchSources: string[];
+  knowledgeEvidence?: Array<{
+    id: string;
+    titleZh: string;
+    titleEn: string;
+    sourceUrl: string;
+    score: number;
+  }>;
 };
 
 export type ResumeProject = {

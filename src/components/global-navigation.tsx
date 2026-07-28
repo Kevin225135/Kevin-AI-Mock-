@@ -8,6 +8,7 @@ import {
   FileText,
   Gauge,
   Home,
+  Library,
   MessageSquareText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,6 +103,17 @@ export function GlobalNavigation() {
               {t("主页面", "Home")}
             </Link>
           ) : null}
+          <Link
+            href="/knowledge"
+            aria-current={pathname === "/knowledge" ? "page" : undefined}
+            className={cn(
+              "hidden h-8 items-center gap-1.5 rounded-button border border-black/[0.08] px-2.5 text-xs font-medium transition-colors sm:inline-flex",
+              pathname === "/knowledge" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-secondary"
+            )}
+          >
+            <Library className="size-3.5" />
+            {t("知识库", "Knowledge")}
+          </Link>
           <button
             type="button"
             onClick={() => setLocale(locale === "zh" ? "en" : "zh")}

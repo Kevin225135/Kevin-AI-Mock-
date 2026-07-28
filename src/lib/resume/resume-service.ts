@@ -12,6 +12,7 @@ import {
   retrieveResumeQuestions
 } from "@/lib/rag/retriever";
 import type { RagQuestionContext } from "@/lib/domain/types";
+import { searchKnowledge, type KnowledgeDomain } from "@/lib/knowledge/knowledge-service";
 
 export async function uploadResume(file: File, actor: CurrentUser) {
   const parsed = await parseResumeFile(file);
@@ -76,6 +77,31 @@ export async function createResumeQuestions(input: {
     difficulty: input.difficulty,
     limit: input.questionCount
   });
+  const knowledge = await searchKnowledge({
+    query: [
+      input.targetRole,
+      ...resume.skills,
+      ...projects.flatMap((project) => [project.name, project.description, ...project.technologies])
+    ].join(" "),
+    domain: inferKnowledgeDomain(input.targetRole),
+    limit: Math.max(input.questionCount, 5)
+  });
+  retrieval.selected.forEach((candidate, index) => {
+    const matches = knowledge.slice(index, index + 2);
+    candidate.context.knowledgeEvidence = matches.map((entry) => ({
+      id: entry.id,
+      titleZh: entry.titleZh,
+      titleEn: entry.titleEn,
+      sourceUrl: entry.sourceUrl,
+      score: entry.score
+    }));
+    candidate.context.researchSources = [
+      ...new Set([...candidate.context.researchSources, ...matches.map((entry) => entry.sourceUrl)])
+    ];
+    if (matches[0]) {
+      candidate.expectation += ` 知识库校准主题：${matches[0].titleZh} / ${matches[0].titleEn}。`;
+    }
+  });
 
   await prisma.ragRetrievalTrace.create({
     data: {
@@ -116,6 +142,16 @@ export async function createResumeQuestions(input: {
       };
     })
   );
+}
+
+function inferKnowledgeDomain(targetRole: string): KnowledgeDomain | undefined {
+  if (/投行|投资银行|investment bank|m&a|merger|capital market/i.test(targetRole)) {
+    return "INVESTMENT_BANKING";
+  }
+  if (/ai|人工智能|产品经理|product manager|llm|machine learning/i.test(targetRole)) {
+    return "AI_PRODUCT_MANAGER";
+  }
+  return undefined;
 }
 
 export async function createResumeFollowUp(input: {
