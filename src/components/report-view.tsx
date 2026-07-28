@@ -141,19 +141,19 @@ export function ReportView({ sessionId }: { sessionId: string }) {
 
             <div className="flex items-center gap-4 lg:justify-end">
               <div
-                className="grid size-24 place-items-center rounded-full"
+                className="grid size-28 shrink-0 place-items-center rounded-full p-[7px]"
                 style={{
                   background: `conic-gradient(hsl(var(--primary)) ${
                     report.averageScore * 3.6
                   }deg, hsl(var(--secondary)) 0deg)`
                 }}
               >
-                <div className="grid size-18 place-items-center rounded-full border border-black/[0.08] bg-white">
+                <div className="grid size-full place-items-center rounded-full border border-black/[0.08] bg-white shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]">
                   <div className="text-center">
-                    <p className="text-2xl font-bold tabular-nums text-foreground">
+                    <p className="text-[1.75rem] font-bold leading-none tabular-nums tracking-tight text-foreground">
                       <AnimatedNumber value={report.averageScore} />
                     </p>
-                    <p className="text-[11px] text-muted-foreground">平均分</p>
+                    <p className="mt-1.5 text-[11px] leading-none text-muted-foreground">平均分</p>
                   </div>
                 </div>
               </div>
