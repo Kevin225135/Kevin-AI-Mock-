@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchKnowledge, type KnowledgeDomain } from "@/lib/knowledge/knowledge-service";
+import { countKnowledge, searchKnowledge, type KnowledgeDomain } from "@/lib/knowledge/knowledge-service";
 
 const domains = new Set<KnowledgeDomain>(["INVESTMENT_BANKING", "AI_PRODUCT_MANAGER"]);
 
@@ -9,10 +9,15 @@ export async function GET(request: NextRequest) {
   const domain = rawDomain && domains.has(rawDomain as KnowledgeDomain)
     ? rawDomain as KnowledgeDomain
     : undefined;
-  const entries = await searchKnowledge({ query, domain, limit: 60 });
+  const categoryPrefix = request.nextUrl.searchParams.get("collection")?.slice(0, 40) || undefined;
+  const [entries, total] = await Promise.all([
+    searchKnowledge({ query, domain, categoryPrefix, limit: 100 }),
+    countKnowledge({ domain, categoryPrefix })
+  ]);
   return NextResponse.json({
     entries,
-    total: entries.length,
+    total,
+    returned: entries.length,
     retrieval: query ? "hybrid-vector-keyword" : "browse"
   });
 }

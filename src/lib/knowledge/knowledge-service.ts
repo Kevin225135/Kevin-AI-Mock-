@@ -6,13 +6,15 @@ export type KnowledgeDomain = "INVESTMENT_BANKING" | "AI_PRODUCT_MANAGER";
 export async function searchKnowledge(input: {
   query?: string;
   domain?: KnowledgeDomain;
+  categoryPrefix?: string;
   limit?: number;
 }) {
   const query = input.query?.trim() ?? "";
   const rows = await prisma.knowledgeEntry.findMany({
     where: {
       isPublished: true,
-      ...(input.domain ? { domain: input.domain } : {})
+      ...(input.domain ? { domain: input.domain } : {}),
+      ...(input.categoryPrefix ? { category: { startsWith: input.categoryPrefix } } : {})
     },
     orderBy: [{ domain: "asc" }, { category: "asc" }, { updatedAt: "desc" }]
   });
@@ -55,6 +57,19 @@ export async function searchKnowledge(input: {
     .filter((row) => !query || row.score > 0)
     .sort((a, b) => b.score - a.score || a.titleEn.localeCompare(b.titleEn))
     .slice(0, Math.min(Math.max(input.limit ?? 50, 1), 100));
+}
+
+export async function countKnowledge(input: {
+  domain?: KnowledgeDomain;
+  categoryPrefix?: string;
+}) {
+  return prisma.knowledgeEntry.count({
+    where: {
+      isPublished: true,
+      ...(input.domain ? { domain: input.domain } : {}),
+      ...(input.categoryPrefix ? { category: { startsWith: input.categoryPrefix } } : {})
+    }
+  });
 }
 
 function normalize(value: string) {

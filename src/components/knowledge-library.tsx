@@ -20,7 +20,9 @@ const tabs: Array<[Domain, string, string]> = [
 export function KnowledgeLibrary() {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState<Domain>("");
+  const [collection, setCollection] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,10 +32,12 @@ export function KnowledgeLibrary() {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (domain) params.set("domain", domain);
+      if (collection) params.set("collection", collection);
       try {
         const response = await fetch(`/api/knowledge?${params}`, { signal: controller.signal });
         const data = await response.json();
         setEntries(data.entries ?? []);
+        setTotal(data.total ?? 0);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -42,7 +46,7 @@ export function KnowledgeLibrary() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, domain]);
+  }, [query, domain, collection]);
 
   return (
     <div className="space-y-6">
@@ -75,7 +79,16 @@ export function KnowledgeLibrary() {
             </button>
           ))}
         </div>
-        <span className="text-sm text-muted-foreground">{entries.length} 条知识 / entries</span>
+        <select value={collection} onChange={(event) => setCollection(event.target.value)}
+          className="rounded-full border bg-white px-4 py-2 text-sm outline-none focus:border-primary">
+          <option value="">全部专题 / All collections</option>
+          <option value="投行400问">投行400问 / IB 400</option>
+          <option value="A/H股">A股和港股 / A & H shares</option>
+          <option value="AI产品">AI产品全流程 / AI Product</option>
+          <option value="AI基础知识">AI基础知识 / AI Fundamentals</option>
+          <option value="Vibe Coding">Vibe Coding实操</option>
+        </select>
+        <span className="text-sm text-muted-foreground">显示 {entries.length} / 共 {total} 条</span>
       </div>
 
       {!loading && entries.length === 0 ? (
