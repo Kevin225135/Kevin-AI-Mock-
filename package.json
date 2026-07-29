@@ -19,6 +19,7 @@
     "eval:seed": "tsx --env-file=.env.local scripts/seed-evals.ts",
     "eval:annotate": "tsx --env-file=.env.local scripts/annotate-eval.ts",
     "knowledge:seed": "tsx --env-file=.env.local scripts/seed-knowledge.ts",
+    "knowledge:reindex": "tsx --env-file=.env.local scripts/seed-knowledge.ts",
     "ai:check": "tsx --env-file=.env.local scripts/check-ai-provider.ts"
   },
   "dependencies": {

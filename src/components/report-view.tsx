@@ -131,7 +131,7 @@ export function ReportView({ sessionId }: { sessionId: string }) {
         <div className="border-b border-black/[0.08] px-6 py-5">
           <div className="grid gap-6 lg:grid-cols-[1fr_14rem] lg:items-center">
             <div>
-              <h2 className="text-2xl font-semibold tracking-subheading text-foreground">
+              <h2 className="mentor-display text-3xl font-semibold tracking-subheading text-foreground">
                 复盘报告
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">

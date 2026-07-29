@@ -11,6 +11,11 @@ export function embedText(value: string) {
   return norm ? vector.map((item) => item / norm) : vector;
 }
 
+export function normalizeVector(vector: number[]) {
+  const norm = Math.sqrt(vector.reduce((sum, item) => sum + item * item, 0));
+  return norm ? vector.map((item) => item / norm) : vector;
+}
+
 export function cosineSimilarity(left: number[], right: number[]) {
   if (left.length !== right.length || left.length === 0) return 0;
   return left.reduce((sum, item, index) => sum + item * right[index], 0);

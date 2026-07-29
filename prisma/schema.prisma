@@ -219,6 +219,10 @@ model KnowledgeEntry {
   competencies     String[]
   sourceTitle      String   @map("source_title")
   sourceUrl        String   @map("source_url")
+  sourceAuthority  Int      @default(60) @map("source_authority")
+  publishedAt      DateTime? @map("published_at")
+  expiresAt        DateTime? @map("expires_at")
+  lastVerifiedAt   DateTime? @map("last_verified_at")
   researchRound    Int      @map("research_round")
   embeddingModel   String   @map("embedding_model")
   embedding        Float[]
@@ -229,6 +233,8 @@ model KnowledgeEntry {
 
   @@index([domain, category])
   @@index([isPublished, updatedAt])
+  @@index([isPublished, sourceAuthority])
+  @@index([expiresAt])
   @@map("knowledge_entries")
 }
 
