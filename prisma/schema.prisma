@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InterviewModule {
+  BEHAVIORAL
+  CV_RELATED
+  TECHNICAL
+  MARKET
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SessionStatus {
+  CREATED
+  IN_PROGRESS
+  SCORING
+  COMPLETED
+  FAILED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UsageLedgerType {
+  DEBIT
+  ADJUSTMENT
+  RESET
+}
+
+model UsagePlan {
+  code                String        @id
+  name                String
+  monthlySessionLimit Int?          @map("monthly_session_limit")
+  isActive            Boolean       @default(true) @map("is_active")
+  users               User[]
+  periods             UsagePeriod[]
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  @@map("usage_plans")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  targetRole    String?        @map("target_role")
+  passwordHash  String         @map("password_hash")
+  role          UserRole       @default(USER)
+  status        UserStatus     @default(ACTIVE)
+  tokenVersion  Int            @default(0) @map("token_version")
+  planCode      String         @default("FREE") @map("plan_code")
+  plan          UsagePlan      @relation(fields: [planCode], references: [code])
+  lastLoginAt   DateTime?      @map("last_login_at")
+  privacyAcceptedAt DateTime?  @map("privacy_accepted_at")
+  authSessions  AuthSession[]
+  usagePeriods  UsagePeriod[]
+  usageLedger   UsageLedger[]
+  sessions      MockSession[]
+  resumes       Resume[]
+  events        Event[]
+  ragTraces     RagRetrievalTrace[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Resume {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName       String        @map("file_name")
+  mimeType       String        @map("mime_type")
+  rawText        String        @map("raw_text")
+  summary        String?
+  companies      String[]
+  roles          String[]
+  skills         String[]
+  projects       Json
+  education      Json
+  parseStatus    String        @default("COMPLETED") @map("parse_status")
+  privacyAcceptedAt DateTime   @default(now()) @map("privacy_accepted_at")
+  retentionExpiresAt DateTime? @map("retention_expires_at")
+  sessions       MockSession[]
+  ragTraces      RagRetrievalTrace[]
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@map("resumes")
+}
+
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model UsagePeriod {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode      String        @map("plan_code")
+  plan          UsagePlan     @relation(fields: [planCode], references: [code])
+  periodStart   DateTime      @map("period_start")
+  periodEnd     DateTime      @map("period_end")
+  sessionLimit  Int?          @map("session_limit")
+  extraSessions Int           @default(0) @map("extra_sessions")
+  sessionsUsed  Int           @default(0) @map("sessions_used")
+  ledger        UsageLedger[]
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@unique([userId, periodStart])
+  @@index([userId, periodEnd])
+  @@map("usage_periods")
+}
+
+model UsageLedger {
+  id           String          @id @default(cuid())
+  userId       String          @map("user_id")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId     String?         @map("period_id")
+  period       UsagePeriod?    @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  sessionId    String?         @map("session_id")
+  type         UsageLedgerType
+  delta        Int
+  balanceAfter Int?            @map("balance_after")
+  reason       String?
+  metadata     Json?
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([periodId, createdAt])
+  @@index([sessionId])
+  @@map("usage_ledger")
+}
+
+model QuestionBank {
+  id              String           @id @default(cuid())
+  externalId      String           @unique @map("external_id")
+  module          InterviewModule
+  targetRole      String           @map("target_role")
+  difficulty      Difficulty       @default(MEDIUM)
+  prompt          String
+  expectation     String?
+  keywords        String[]         @default([])
+  retrievalContext Json?           @map("retrieval_context")
+  rubricVersionId String?          @map("rubric_version_id")
+  rubricVersion   RubricVersion?   @relation(fields: [rubricVersionId], references: [id])
+  answers         Answer[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@index([module, targetRole, difficulty])
+  @@map("question_bank")
+}
+
+model RagRetrievalTrace {
+  id           String   @id @default(cuid())
+  userId       String?  @map("user_id")
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId     String?  @map("resume_id")
+  resume       Resume?  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  sessionId    String?  @map("session_id")
+  session      MockSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phase        String
+  query        String
+  keywords     String[]
+  candidates   Json
+  selected     Json
+  latencyMs    Int      @map("latency_ms")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([resumeId, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("rag_retrieval_traces")
+}
+
+model KnowledgeEntry {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  domain           String
+  category         String
+  titleZh          String   @map("title_zh")
+  titleEn          String   @map("title_en")
+  summaryZh        String   @map("summary_zh")
+  summaryEn        String   @map("summary_en")
+  contentZh        String   @map("content_zh")
+  contentEn        String   @map("content_en")
+  keywords         String[]
+  competencies     String[]
+  sourceTitle      String   @map("source_title")
+  sourceUrl        String   @map("source_url")
+  researchRound    Int      @map("research_round")
+  embeddingModel   String   @map("embedding_model")
+  embedding        Float[]
+  searchVector     Unsupported("tsvector") @default(dbgenerated("''::tsvector")) @map("search_vector")
+  isPublished      Boolean  @default(true) @map("is_published")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([domain, category])
+  @@index([isPublished, updatedAt])
+  @@map("knowledge_entries")
+}
+
+model MockSession {
+  id                  String        @id @default(cuid())
+  userId              String        @map("user_id")
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId            String?       @map("resume_id")
+  resume              Resume?       @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  module              InterviewModule
+  targetRole          String        @map("target_role")
+  difficulty          Difficulty    @default(MEDIUM)
+  status              SessionStatus @default(CREATED)
+  questionCount       Int           @default(3) @map("question_count")
+  currentQuestionIndex Int          @default(0) @map("current_question_index")
+  selectedQuestionIds String[]      @map("selected_question_ids")
+  followUpRound       Int           @default(0) @map("follow_up_round")
+  answers             Answer[]
+  scores              AiScore[]
+  report              Report?
+  events              Event[]
+  ragTraces           RagRetrievalTrace[]
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([module, targetRole])
+  @@map("mock_sessions")
+}
+
+model Answer {
+  id            String       @id @default(cuid())
+  sessionId     String       @map("session_id")
+  session       MockSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId    String       @map("question_id")
+  question      QuestionBank @relation(fields: [questionId], references: [id])
+  content       String
+  followUpRound Int          @default(0) @map("follow_up_round")
+  audioUrl      String?      @map("audio_url")
+  transcript    String?
+  sttStatus     String?      @map("stt_status")
+  score         AiScore?
+  submittedAt   DateTime     @default(now()) @map("submitted_at")
+
+  @@unique([sessionId, questionId, followUpRound])
+  @@index([sessionId, submittedAt])
+  @@map("answers")
+}
+
+model AiScore {
+  id               String         @id @default(cuid())
+  sessionId        String         @map("session_id")
+  session          MockSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answerId         String         @unique @map("answer_id")
+  answer           Answer         @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  rubricVersionId  String?        @map("rubric_version_id")
+  rubricVersion    RubricVersion? @relation(fields: [rubricVersionId], references: [id])
+  starCompleteness Int            @map("star_completeness")
+  logicStructure   Int            @map("logic_structure")
+  contentDepth     Int            @map("content_depth")
+  communication    Int
+  totalScore       Int            @map("total_score")
+  deductions       String[]
+  improvements     String[]
+  sampleAnswer     String         @map("sample_answer")
+  reasoning        String
+  rawJson          Json           @map("raw_json")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@index([sessionId, totalScore])
+  @@map("ai_scores")
+}
+
+model Report {
+  id                String      @id @default(cuid())
+  sessionId         String      @unique @map("session_id")
+  session           MockSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  summary           String
+  averageScore      Float       @map("average_score")
+  dimensionAverages Json        @map("dimension_averages")
+  questionFeedback  Json        @map("question_feedback")
+  nextPracticePlan  String[]    @map("next_practice_plan")
+  shareToken        String?     @unique @map("share_token")
+  isPublic          Boolean     @default(false) @map("is_public")
+  shareExpiresAt    DateTime?   @map("share_expires_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+model RubricVersion {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  version   Int
+  title     String
+  dimensions Json
+  isActive  Boolean        @default(true) @map("is_active")
+  questions QuestionBank[]
+  scores    AiScore[]
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@map("rubric_versions")
+}
+
+model Event {
+  id        String       @id @default(cuid())
+  name      String
+  userId    String?      @map("user_id")
+  user      User?        @relation(fields: [userId], references: [id])
+  sessionId String?      @map("session_id")
+  session   MockSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  payload   Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([name, createdAt])
+  @@index([sessionId, createdAt])
+  @@map("events")
+}
+
+model EvalSample {
+  id          String          @id @default(cuid())
+  module      InterviewModule
+  targetRole  String          @map("target_role")
+  question    String
+  answer      String
+  humanScore  Int             @map("human_score")
+  notes       String?
+  category    String          @default("BASIC")
+  expectedFollowUp String?    @map("expected_follow_up")
+  annotations EvalAnnotation[]
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@index([module, targetRole])
+  @@map("eval_samples")
+}
+
+model EvalAnnotation {
+  id          String     @id @default(cuid())
+  sampleId    String     @map("sample_id")
+  sample      EvalSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  annotator   String
+  totalScore  Int        @map("total_score")
+  dimensions  Json?
+  shouldFollowUp String?  @map("should_follow_up")
+  notes       String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@unique([sampleId, annotator])
+  @@index([sampleId, createdAt])
+  @@map("eval_annotations")
+}

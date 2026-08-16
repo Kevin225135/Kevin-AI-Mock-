@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Mock教练V1</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #172033;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      width: 100%;
+      height: 185mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2mm 0;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.15;
+      color: #0f172a;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 7px;
+      font-size: 14px;
+      color: #526071;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+      position: relative;
+    }
+
+    .step {
+      min-height: 132px;
+      padding: 14px 12px 12px;
+      border: 1.5px solid #cfd8e6;
+      border-radius: 8px;
+      background: #fbfdff;
+      position: relative;
+      box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      width: 10px;
+      height: 2px;
+      background: #2563eb;
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      top: calc(50% - 5px);
+      right: -15px;
+      border-left: 8px solid #2563eb;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      z-index: 2;
+    }
+
+    .step:last-child::before,
+    .step:last-child::after {
+      display: none;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 9px;
+    }
+
+    .step h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.2;
+      color: #111827;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: #4b5563;
+    }
+
+    .step strong {
+      color: #111827;
+    }
+
+    .step.user {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .step.ai {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .step.guard {
+      border-color: #fde68a;
+      background: #fffbeb;
+    }
+
+    .step.output {
+      border-color: #ddd6fe;
+      background: #f5f3ff;
+    }
+
+    .step.user .tag { background: #2563eb; }
+    .step.ai .tag { background: #16a34a; }
+    .step.guard .tag { background: #d97706; }
+    .step.output .tag { background: #7c3aed; }
+
+    .loop {
+      margin-top: 14px;
+      padding: 11px 14px;
+      border: 1px dashed #94a3b8;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #334155;
+      font-size: 13px;
+      background: #f8fafc;
+    }
+
+    .loop b {
+      color: #0f172a;
+    }
+
+    .support {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .support-card {
+      min-height: 76px;
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .support-card h3 {
+      margin: 0 0 5px;
+      font-size: 13px;
+      color: #111827;
+    }
+
+    .support-card p {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #566274;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: 1px;
+    }
+
+    .blue { background: #2563eb; }
+    .green { background: #16a34a; }
+    .amber { background: #d97706; }
+    .purple { background: #7c3aed; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="header">
+      <h1>AI Mock教练V1</h1>
+      <div class="subtitle">核心闭环：高频练习 → 即时评分 → 结构化复盘 → 再练提升</div>
+    </section>
+
+    <section>
+      <div class="flow" aria-label="AI Mock教练V1流程图">
+        <article class="step user">
+          <span class="tag">1</span>
+          <h2>选择目标</h2>
+          <p><strong>用户输入</strong><br />岗位、模块、难度、题量。V1 聚焦文字作答，先验证反馈价值。</p>
+        </article>
+
+        <article class="step ai">
+          <span class="tag">2</span>
+          <h2>AI 出题</h2>
+          <p><strong>题库筛选</strong><br />按模块返回题目，覆盖 Behavioral、CV、Technical、Market。</p>
+        </article>
+
+        <article class="step user">
+          <span class="tag">3</span>
+          <h2>用户作答</h2>
+          <p><strong>保存回答</strong><br />提交文字答案，记录题目、答案、耗时与会话状态。</p>
+        </article>
+
+        <article class="step ai">
+          <span class="tag">4</span>
+          <h2>Rubric 评分</h2>
+          <p><strong>多维打分</strong><br />STAR 完整度、逻辑结构、内容深度、表达质量。</p>
+        </article>
+
+        <article class="step guard">
+          <span class="tag">5</span>
+          <h2>质量校验</h2>
+          <p><strong>可信兜底</strong><br />JSON Schema、分数边界、证据引用、超时重试。</p>
+        </article>
+
+        <article class="step output">
+          <span class="tag">6</span>
+          <h2>复盘报告</h2>
+          <p><strong>行动建议</strong><br />总分、扣分依据、改进建议、范例答案、下一题推荐。</p>
+        </article>
+      </div>
+
+      <div class="loop">
+        <span>↻</span>
+        <span><b>闭环目标：</b>用户看完复盘后，基于薄弱维度再练一场，形成可量化进步。</span>
+      </div>
+    </section>
+
+    <section class="support">
+      <div class="support-card">
+        <h3>V1 不做复杂追问</h3>
+        <p>动态追问与语音作答放到 V2，避免过早增加链路复杂度。</p>
+      </div>
+      <div class="support-card">
+        <h3>反馈必须有证据</h3>
+        <p>每个低分维度都要对应用户回答中的具体缺失点。</p>
+      </div>
+      <div class="support-card">
+        <h3>异常必须可降级</h3>
+        <p>LLM 超时或格式异常时，重试一次；仍失败则保存回答稍后评分。</p>
+      </div>
+      <div class="support-card">
+        <h3>效果用数据验证</h3>
+        <p>重点看完成率、报告查看率、7 日回访率和评分提升。</p>
+      </div>
+    </section>
+
+    <section class="footer">
+      <div class="legend">
+        <span><i class="dot blue"></i>用户动作</span>
+        <span><i class="dot green"></i>AI 能力</span>
+        <span><i class="dot amber"></i>质量兜底</span>
+        <span><i class="dot purple"></i>用户价值</span>
+      </div>
+      <div>V1 主线：先把“评分可信 + 复盘有用”做扎实</div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* ── Neutral Scale (cool-lavender undertone) ── */
+    --background: 250 27% 97.5%;       /* #f5f4fa 浅紫灰 */
+    --foreground: 245 15% 15%;         /* 冷调近黑 */
+    --card: 0 0% 100%;                 /* pure white surface */
+    --card-foreground: 245 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 245 15% 15%;
+
+    /* ── Primary: 紫蓝 (Glassmorphism Violet) ── */
+    --primary: 245 42% 50%;            /* #534AB7 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 245 47% 37%;      /* #3C3489 — pressed */
+
+    /* ── Glass Badge (pill badges) ── */
+    --badge-blue-bg: 245 60% 96%;      /* #F0EEFB 淡紫 */
+    --badge-blue-text: 245 47% 40%;    /* #4538A0 */
+
+    /* ── Neutrals ── */
+    --secondary: 250 20% 94%;
+    --secondary-foreground: 245 15% 22%;
+    --muted: 250 16% 96%;
+    --muted-foreground: 245 8% 42%;
+    --accent: 250 24% 92%;
+    --accent-foreground: 245 15% 18%;
+
+    /* ── Hero Dark (deep violet) ── */
+    --hero-dark: 249 61% 17%;          /* #1a1145 */
+
+    /* ── Module Theme Colors ── */
+    --module-behavioral: 245 42% 50%;      /* violet  #534AB7 */
+    --module-behavioral-bg: 245 60% 96%;   /* #EEEDFE */
+    --module-cv: 207 65% 48%;              /* blue    #378ADD */
+    --module-cv-bg: 207 80% 96%;           /* #E6F1FB */
+    --module-technical: 162 68% 37%;       /* teal    #1D9E75 */
+    --module-technical-bg: 162 62% 95%;    /* #E1F5EE */
+    --module-market: 33 85% 55%;           /* amber   #EF9F27 */
+    --module-market-bg: 38 90% 95%;        /* #FAEEDA */
+
+    /* ── Semantic ── */
+    --destructive: 6 69% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 162 68% 37%;
+    --warning: 33 85% 50%;
+    --info: 207 65% 48%;
+
+    /* ── Borders & Inputs ── */
+    --border: 250 12% 88%;
+    --input: 250 10% 85%;
+    --ring: 245 42% 50%;
+
+    --radius: 0.5rem;
+
+    /* ── Accent Tokens ── */
+    --ink: 245 15% 15%;
+    --mist: 250 16% 96%;
+    --coral: 6 69% 47%;
+    --brass: 33 85% 50%;
+    --teal: 162 68% 37%;
+    --blue: 207 65% 48%;
+
+    /* ── Radius Scale ── */
+    --radius-button: 8px;
+    --radius-card: 14px;
+    --radius-card-lg: 18px;
+    --radius-pill: 9999px;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-feature-settings: "lnum" 1, "kern" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .page-enter {
+    animation: page-enter 380ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2.4s ease-in-out infinite;
+  }
+
+  /* ── Section alternation surface ── */
+  .bg-surface-warm {
+    background-color: hsl(var(--muted));
+  }
+
+  /* ── Glassmorphism card (frosted) ── */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+  }
+
+  /* ── Hero dark gradient with light blobs ── */
+  .hero-glass {
+    background:
+      radial-gradient(closest-side at 82% 18%, hsl(245 52% 60% / 0.35), transparent),
+      radial-gradient(closest-side at 12% 88%, hsl(207 75% 55% / 0.28), transparent),
+      linear-gradient(135deg, hsl(249 61% 17%) 0%, hsl(252 55% 24%) 55%, hsl(230 60% 30%) 100%);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  header,
+  button,
+  details {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  .shadow-card,
+  .shadow-soft {
+    box-shadow: none !important;
+  }
+}
