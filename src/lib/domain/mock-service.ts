@@ -10,12 +10,20 @@ import {
 import { createFollowUpQuestion, decideFollowUp } from "@/lib/ai/follow-up";
 import { enqueueScoringJob, type ScoringJobData } from "@/lib/queue/scoring-queue";
 import { assertSafeInterviewAnswer } from "@/lib/ai/safety";
+import {
+  createTraceRunId,
+  runWithTrace
+} from "@/lib/observability/trace";
+import { compareAnswerAttempts } from "./attempt-comparison";
+import { DomainError } from "./errors";
 import type {
+  AttemptComparison,
   CreateSessionInput,
   CurrentUser,
   MockSession,
   Question,
   Report,
+  RetryAnswerInput,
   SubmitAnswerInput
 } from "./types";
 
@@ -197,7 +205,7 @@ async function finalizeSavedAnswer({
     question: expectedQuestion,
     answer: input.content
   });
-  await store.saveScore(existing.id, answerId, score);
+  await store.saveScore(existing.id, answerId, score, expectedQuestion.rubricVersionId);
 
   await store.trackEvent({
     name: analyticsEvents.scoreGenerated,
@@ -301,7 +309,7 @@ export async function processQueuedScoring(data: ScoringJobData) {
 
 export async function getReport(sessionId: string, actor: CurrentUser) {
   const store = await getDataStore();
-  const report = await store.getReport(sessionId);
+  let report = await store.getReport(sessionId);
   const session = await store.getSession(sessionId);
 
   if (!session || !canAccessOwnedResource(actor, session.userId)) {
@@ -309,6 +317,12 @@ export async function getReport(sessionId: string, actor: CurrentUser) {
   }
 
   if (report) {
+    if (
+      session.status === "COMPLETED" &&
+      report.questionFeedback.some((item) => !item.latestAttemptId)
+    ) {
+      report = await store.saveReport(buildReport(session));
+    }
     await store.trackEvent({
       name: analyticsEvents.reportView,
       sessionId,
@@ -321,6 +335,164 @@ export async function getReport(sessionId: string, actor: CurrentUser) {
   }
 
   return report;
+}
+
+export async function retryAnswerAttempt(
+  sourceAttemptId: string,
+  input: RetryAnswerInput,
+  actor: CurrentUser
+): Promise<{
+  attempt: MockSession["answers"][number];
+  comparison: AttemptComparison;
+  report: Report;
+  runId: string;
+}> {
+  const store = await getDataStore();
+  const source = await store.getAnswerContext(sourceAttemptId);
+
+  if (!source || !canAccessOwnedResource(actor, source.session.userId)) {
+    throw new DomainError("Answer attempt not found.", "ATTEMPT_NOT_FOUND", 404);
+  }
+  if (!source.score) {
+    throw new DomainError(
+      "原回答尚未完成评分，暂时不能重答。",
+      "SOURCE_SCORE_PENDING",
+      409
+    );
+  }
+  const rubricVersionId =
+    source.score.rubricVersionId ?? source.question.rubricVersionId;
+  if (!rubricVersionId) {
+    throw new DomainError(
+      "原评分缺少 Rubric 版本，无法创建可比较的重答。",
+      "RUBRIC_VERSION_MISSING",
+      409
+    );
+  }
+
+  assertSafeInterviewAnswer(input.content);
+  const runId = createTraceRunId();
+  const attempt = await store.createRetryAttempt(sourceAttemptId, input);
+  let retry = await store.getAnswerContext(attempt.id);
+  if (!retry) {
+    throw new Error("Retry attempt disappeared after save.");
+  }
+
+  if (!retry.score) {
+    await store.trackEvent({
+      name: analyticsEvents.answerRetrySubmitted,
+      sessionId: source.session.id,
+      userId: actor.id,
+      payload: {
+        sourceAttemptId,
+        retryAttemptId: attempt.id,
+        runId,
+        attemptNo: attempt.attemptNo,
+        answerLength: input.content.length
+      }
+    });
+    const score = await runWithTrace(
+      {
+        runId,
+        name: "answer-retry-score",
+        sessionId: source.session.id,
+        userId: actor.id,
+        version: rubricVersionId,
+        tags: ["v2", "retry", source.session.module.toLowerCase()],
+        metadata: {
+          sourceAttemptId,
+          retryAttemptId: attempt.id,
+          attemptNo: attempt.attemptNo,
+          rubricVersionId,
+          provider: process.env.AI_PROVIDER ?? "local"
+        }
+      },
+      () =>
+        scoreAnswer({
+          question: source.question,
+          answer: input.content
+        })
+    );
+    await store.saveScore(source.session.id, attempt.id, score, rubricVersionId);
+    retry = await store.getAnswerContext(attempt.id);
+    if (!retry?.score) {
+      throw new Error("Retry score disappeared after save.");
+    }
+    await store.trackEvent({
+      name: analyticsEvents.answerRetryCompleted,
+      sessionId: source.session.id,
+      userId: actor.id,
+      payload: {
+        sourceAttemptId,
+        retryAttemptId: attempt.id,
+        runId,
+        attemptNo: attempt.attemptNo,
+        totalScore: retry.score.totalScore,
+        rubricVersionId
+      }
+    });
+  }
+
+  const comparison = compareAnswerAttempts({
+    sourceAttempt: source.answer,
+    sourceScore: source.score,
+    retryAttempt: retry.answer,
+    retryScore: retry.score
+  });
+  const refreshedSession = await store.getSession(source.session.id);
+  if (!refreshedSession) {
+    throw new Error("Session disappeared after retry scoring.");
+  }
+  const report = await store.saveReport(buildReport(refreshedSession));
+
+  return { attempt: retry.answer, comparison, report, runId };
+}
+
+export async function getAnswerAttemptComparison(
+  attemptId: string,
+  actor: CurrentUser
+): Promise<AttemptComparison> {
+  const store = await getDataStore();
+  const target = await store.getAnswerContext(attemptId);
+  if (!target || !canAccessOwnedResource(actor, target.session.userId)) {
+    throw new DomainError("Answer attempt not found.", "ATTEMPT_NOT_FOUND", 404);
+  }
+
+  const sourceAttemptId = target.answer.parentAnswerId;
+  if (sourceAttemptId) {
+    const source = await store.getAnswerContext(sourceAttemptId);
+    if (!source?.score || !target.score) {
+      throw new DomainError("Comparison score is not ready.", "SCORE_PENDING", 409);
+    }
+    return compareAnswerAttempts({
+      sourceAttempt: source.answer,
+      sourceScore: source.score,
+      retryAttempt: target.answer,
+      retryScore: target.score
+    });
+  }
+
+  const latestRetry = target.session.answers
+    .filter(
+      (candidate) =>
+        candidate.questionId === target.answer.questionId &&
+        candidate.followUpRound === target.answer.followUpRound &&
+        candidate.attemptNo > target.answer.attemptNo
+    )
+    .sort((a, b) => b.attemptNo - a.attemptNo)[0];
+  if (!latestRetry) {
+    throw new DomainError("No retry attempt exists yet.", "RETRY_NOT_FOUND", 404);
+  }
+  const retry = await store.getAnswerContext(latestRetry.id);
+  if (!target.score || !retry?.score) {
+    throw new DomainError("Comparison score is not ready.", "SCORE_PENDING", 409);
+  }
+  return compareAnswerAttempts({
+    sourceAttempt: target.answer,
+    sourceScore: target.score,
+    retryAttempt: retry.answer,
+    retryScore: retry.score
+  });
 }
 
 export function getCurrentQuestion(session: MockSession) {

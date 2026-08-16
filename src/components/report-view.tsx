@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -16,11 +16,16 @@ import {
   TrendingUp
 } from "lucide-react";
 import { dimensionLabels, scoreDimensions } from "@/lib/domain/constants";
-import type { Report } from "@/lib/domain/types";
+import type {
+  AttemptComparison,
+  Report,
+  ReportQuestionFeedback
+} from "@/lib/domain/types";
 import { AnimatedNumber, FadeIn } from "./ui/motion";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
+import { Textarea } from "./ui/textarea";
 
 type ReportPayload = {
   report: Report;
@@ -236,6 +241,18 @@ export function ReportView({ sessionId }: { sessionId: string }) {
             </div>
 
             <div className="px-5 py-5">
+              <div className="mb-5 rounded-button border border-black/[0.06] bg-secondary/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-muted-foreground">当前回答</p>
+                  <Badge tone="slate">
+                    第 {item.attemptNo} 次 · 共 {item.attemptCount} 次
+                  </Badge>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {item.answer}
+                </p>
+              </div>
+
               {/* Dimension scores */}
               <div className="grid gap-2.5 md:grid-cols-4">
                 {scoreDimensions.map((dimension) => (
@@ -287,6 +304,11 @@ export function ReportView({ sessionId }: { sessionId: string }) {
                   </p>
                 </div>
               </div>
+
+              <RetryPanel
+                item={item}
+                onCompleted={(nextReport) => setReport(nextReport)}
+              />
             </div>
           </div>
           </FadeIn>
@@ -457,6 +479,150 @@ export function ReportView({ sessionId }: { sessionId: string }) {
           </details>
         </div>
       </FadeIn>
+    </div>
+  );
+}
+
+function RetryPanel({
+  item,
+  onCompleted
+}: {
+  item: ReportQuestionFeedback;
+  onCompleted: (report: Report) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [content, setContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [comparison, setComparison] = useState<AttemptComparison | null>(null);
+  const idempotencyKey = useRef<string | null>(null);
+
+  async function submitRetry() {
+    if (content.trim().length < 20 || !item.latestAttemptId) return;
+    setIsSaving(true);
+    setError(null);
+    idempotencyKey.current ??= crypto.randomUUID();
+
+    try {
+      const response = await fetch(
+        `/api/attempts/${item.latestAttemptId}/retry`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey.current
+          },
+          body: JSON.stringify({ content: content.trim() })
+        }
+      );
+      const payload = (await response.json()) as {
+        error?: string;
+        comparison?: AttemptComparison;
+        report?: Report;
+      };
+      if (!response.ok || !payload.comparison || !payload.report) {
+        throw new Error(payload.error ?? "重答评分失败，请稍后重试。");
+      }
+
+      setComparison(payload.comparison);
+      onCompleted(payload.report);
+      setContent("");
+      setIsOpen(false);
+      idempotencyKey.current = null;
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "重答评分失败，请稍后重试。"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 rounded-button border border-primary/15 bg-primary/[0.035] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">把反馈立刻用起来</h4>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            原回答会永久保留；重答将使用同一评分版本生成可比结果。
+          </p>
+        </div>
+        <Button
+          variant={isOpen ? "secondary" : "primary"}
+          onClick={() => setIsOpen((value) => !value)}
+          disabled={!item.latestAttemptId || isSaving}
+        >
+          <RotateCcw className="size-4" />
+          {isOpen ? "收起" : item.attemptCount > 1 ? "再次重答" : "立即重答"}
+        </Button>
+      </div>
+
+      {isOpen ? (
+        <div className="mt-4 space-y-3">
+          <Textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            maxLength={20000}
+            placeholder="先给结论，再补充个人行动、证据、取舍和可验证结果……"
+            disabled={isSaving}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              {content.trim().length}/20 字最低要求
+            </p>
+            <Button
+              onClick={submitRetry}
+              disabled={content.trim().length < 20 || isSaving}
+            >
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <TrendingUp className="size-4" />}
+              {isSaving ? "评分并对比中" : "提交并查看变化"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+
+      {comparison ? (
+        <div className="mt-4 border-t border-primary/10 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={comparison.totalDelta >= 0 ? "teal" : "coral"}>
+              总分 {comparison.beforeTotal} → {comparison.afterTotal}
+            </Badge>
+            <span className="text-sm font-semibold text-foreground">
+              {comparison.totalDelta >= 0 ? "+" : ""}{comparison.totalDelta} 分
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {comparison.dimensionDeltas.map((delta) => (
+              <div key={delta.dimension} className="rounded-md bg-white/80 px-3 py-2 text-xs">
+                <p className="text-muted-foreground">{dimensionLabels[delta.dimension]}</p>
+                <p className="mt-1 font-semibold text-foreground">
+                  {delta.before} → {delta.after}（{delta.delta >= 0 ? "+" : ""}{delta.delta}）
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-foreground">已观察到采纳</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {comparison.adoptedActions.length
+                  ? comparison.adoptedActions.join("；")
+                  : "暂无可由规则可靠确认的采纳项，不做主观推断。"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">仍需改进</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {comparison.remainingActions.join("；") || "本轮未生成新的改进项。"}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -43,6 +43,7 @@ export type Question = {
   prompt: string;
   expectation?: string;
   keywords?: string[];
+  rubricVersionId?: string;
   retrievalContext?: RagQuestionContext;
 };
 
@@ -94,6 +95,9 @@ export type AnswerRecord = {
   questionId: string;
   content: string;
   followUpRound: number;
+  attemptNo: number;
+  attemptKind: "INITIAL" | "RETRY" | "RETEST";
+  parentAnswerId?: string;
   submittedAt: string;
 };
 
@@ -101,6 +105,7 @@ export type AiScore = {
   id: string;
   sessionId: string;
   answerId: string;
+  rubricVersionId?: string;
   dimensions: DimensionScores;
   totalScore: number;
   deductions: string[];
@@ -113,6 +118,11 @@ export type AiScore = {
 
 export type ReportQuestionFeedback = {
   questionId: string;
+  initialAttemptId: string;
+  latestAttemptId: string;
+  attemptNo: number;
+  attemptCount: number;
+  rubricVersionId?: string;
   prompt: string;
   answer: string;
   totalScore: number;
@@ -167,6 +177,31 @@ export type SubmitAnswerInput = {
   content: string;
   transcript?: string;
   sttStatus?: "COMPLETED" | "FAILED" | "NOT_USED";
+};
+
+export type RetryAnswerInput = Omit<SubmitAnswerInput, "questionId"> & {
+  idempotencyKey: string;
+};
+
+export type DimensionDelta = {
+  dimension: ScoreDimension;
+  before: number;
+  after: number;
+  delta: number;
+};
+
+export type AttemptComparison = {
+  sourceAttempt: AnswerRecord;
+  retryAttempt: AnswerRecord;
+  rubricVersionId: string;
+  beforeTotal: number;
+  afterTotal: number;
+  totalDelta: number;
+  dimensionDeltas: DimensionDelta[];
+  improvedDimensions: ScoreDimension[];
+  adoptedActions: string[];
+  unverifiedActions: string[];
+  remainingActions: string[];
 };
 
 export type AnalyticsEventInput = {

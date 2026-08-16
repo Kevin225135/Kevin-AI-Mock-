@@ -32,6 +32,13 @@ const communicationPenaltySignals = [
   /stuff|things|something|whatever|很多很多|大概就是|反正/i
 ];
 
+const marketReasoningSignals = [
+  /观点|判断|结论|view|thesis|position/i,
+  /依据|证据|传导|机制|driver|evidence|mechanism/i,
+  /反方|反例|相反|但是|但|counter|however|downside/i,
+  /失效|阈值|条件|若|如果|invalidate|unless|condition/i
+];
+
 const DEFAULT_PROVIDER_TIMEOUT_MS = 15000;
 
 export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResult> {
@@ -286,6 +293,13 @@ function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {
     starCompleteness = Math.max(starCompleteness, 4);
     logicStructure = Math.max(logicStructure, 4);
     contentDepth = Math.max(contentDepth, 4);
+  }
+  if (input.question.module === "MARKET") {
+    const reasoningCoverage = countMatches(answer, marketReasoningSignals);
+    const reasoningScore = clampScore(1 + reasoningCoverage);
+    starCompleteness = Math.max(starCompleteness, reasoningScore);
+    logicStructure = Math.max(logicStructure, reasoningScore);
+    contentDepth = Math.max(contentDepth, reasoningScore);
   }
 
   const dimensions = {

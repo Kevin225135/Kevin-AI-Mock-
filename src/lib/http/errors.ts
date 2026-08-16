@@ -4,6 +4,7 @@ import { RateLimitError } from "@/lib/auth/rate-limit";
 import { QuotaExceededError } from "@/lib/domain/usage-service";
 import { captureServerError } from "@/lib/monitoring/errors";
 import { UnsafeAnswerError } from "@/lib/ai/safety";
+import { DomainError } from "@/lib/domain/errors";
 
 export function jsonError(error: unknown, fallback = "Request failed.") {
   if (!(error instanceof AuthError) && !(error instanceof RateLimitError)) {
@@ -23,6 +24,12 @@ export function jsonError(error: unknown, fallback = "Request failed.") {
   }
   if (error instanceof UnsafeAnswerError) {
     return NextResponse.json({ error: error.message, code: "UNSAFE_ANSWER" }, { status: 422 });
+  }
+  if (error instanceof DomainError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: error.status }
+    );
   }
   if (isDatabaseUnavailable(error)) {
     return NextResponse.json(

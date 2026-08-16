@@ -128,20 +128,24 @@ export const prismaDataStore: AppDataStore = {
 
     await prisma.answer.upsert({
       where: {
-        sessionId_questionId_followUpRound: {
+        sessionId_questionId_followUpRound_attemptNo: {
           sessionId,
           questionId: input.questionId,
-          followUpRound: session.followUpRound
+          followUpRound: session.followUpRound,
+          attemptNo: 1
         }
       },
-      update: { content: input.content, transcript: input.transcript, sttStatus: input.sttStatus },
+      // A repeated request must never overwrite the original answer.
+      update: {},
       create: {
         sessionId,
         questionId: input.questionId,
         content: input.content,
         transcript: input.transcript,
         sttStatus: input.sttStatus,
-        followUpRound: session.followUpRound
+        followUpRound: session.followUpRound,
+        attemptNo: 1,
+        attemptKind: "INITIAL"
       }
     });
 
@@ -152,10 +156,91 @@ export const prismaDataStore: AppDataStore = {
     return updated;
   },
 
-  async saveScore(sessionId, answerId, result) {
+  async getAnswerContext(answerId) {
+    const row = await prisma.answer.findUnique({
+      where: { id: answerId },
+      include: { question: true, score: true }
+    });
+    if (!row) {
+      return null;
+    }
+
+    const session = await this.getSession(row.sessionId);
+    if (!session) {
+      return null;
+    }
+
+    return {
+      answer: mapAnswer(row),
+      question: mapQuestion(row.question),
+      session,
+      score: row.score ? mapScore(row.score) : undefined
+    };
+  },
+
+  async createRetryAttempt(sourceAnswerId, input) {
+    const source = await prisma.answer.findUnique({ where: { id: sourceAnswerId } });
+    if (!source) {
+      throw new Error("Answer attempt not found.");
+    }
+
+    const idempotent = await prisma.answer.findUnique({
+      where: { idempotencyKey: input.idempotencyKey }
+    });
+    if (idempotent) {
+      if (idempotent.parentAnswerId !== sourceAnswerId) {
+        throw new Error("Idempotency key was already used for another retry.");
+      }
+      return mapAnswer(idempotent);
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const latest = await prisma.answer.aggregate({
+        where: {
+          sessionId: source.sessionId,
+          questionId: source.questionId,
+          followUpRound: source.followUpRound
+        },
+        _max: { attemptNo: true }
+      });
+
+      try {
+        const created = await prisma.answer.create({
+          data: {
+            sessionId: source.sessionId,
+            questionId: source.questionId,
+            content: input.content,
+            transcript: input.transcript,
+            sttStatus: input.sttStatus,
+            followUpRound: source.followUpRound,
+            attemptNo: (latest._max.attemptNo ?? 0) + 1,
+            attemptKind: "RETRY",
+            parentAnswerId: sourceAnswerId,
+            idempotencyKey: input.idempotencyKey
+          }
+        });
+        return mapAnswer(created);
+      } catch (error) {
+        const existing = await prisma.answer.findUnique({
+          where: { idempotencyKey: input.idempotencyKey }
+        });
+        if (existing?.parentAnswerId === sourceAnswerId) {
+          return mapAnswer(existing);
+        }
+        if (!isUniqueConstraintError(error) || attempt === 2) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error("Unable to allocate a retry attempt number.");
+  },
+
+  async saveScore(sessionId, answerId, result, rubricVersionId) {
     const score = await prisma.aiScore.upsert({
       where: { answerId },
       update: {
+        rubricVersionId,
         starCompleteness: result.dimensions.starCompleteness,
         logicStructure: result.dimensions.logicStructure,
         contentDepth: result.dimensions.contentDepth,
@@ -170,6 +255,7 @@ export const prismaDataStore: AppDataStore = {
       create: {
         sessionId,
         answerId,
+        rubricVersionId,
         starCompleteness: result.dimensions.starCompleteness,
         logicStructure: result.dimensions.logicStructure,
         contentDepth: result.dimensions.contentDepth,
@@ -270,6 +356,7 @@ function mapQuestion(row: any): Question {
     prompt: row.prompt,
     expectation: row.expectation ?? undefined,
     keywords: row.keywords ?? [],
+    rubricVersionId: row.rubricVersionId ?? undefined,
     retrievalContext: row.retrievalContext ?? undefined
   };
 }
@@ -281,6 +368,9 @@ function mapAnswer(row: any): AnswerRecord {
     questionId: row.questionId,
     content: row.content,
     followUpRound: row.followUpRound,
+    attemptNo: row.attemptNo,
+    attemptKind: row.attemptKind,
+    parentAnswerId: row.parentAnswerId ?? undefined,
     submittedAt: row.submittedAt.toISOString()
   };
 }
@@ -290,6 +380,7 @@ function mapScore(row: any): AiScore {
     id: row.id,
     sessionId: row.sessionId,
     answerId: row.answerId,
+    rubricVersionId: row.rubricVersionId ?? undefined,
     dimensions: {
       starCompleteness: row.starCompleteness,
       logicStructure: row.logicStructure,
@@ -372,5 +463,14 @@ function candidateScore(question: Question, filter: QuestionFilter) {
   return (
     (question.targetRole === filter.targetRole ? 2 : 0) +
     (question.difficulty === filter.difficulty ? 1 : 0)
+  );
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002"
   );
 }

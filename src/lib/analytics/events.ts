@@ -7,7 +7,9 @@ export const analyticsEvents = {
   sevenDayReturn: "seven_day_return",
   reportFeedbackSubmit: "report_feedback_submit",
   badcaseReport: "badcase_report",
-  scoreRetryClick: "score_retry_click"
+  scoreRetryClick: "score_retry_click",
+  answerRetrySubmitted: "answer_retry_submitted",
+  answerRetryCompleted: "answer_retry_completed"
 } as const;
 
 export type AnalyticsEventName =

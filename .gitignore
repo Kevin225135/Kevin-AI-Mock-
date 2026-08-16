@@ -9,3 +9,5 @@ coverage
 prisma/dev.db
 .workbuddy/
 .impeccable.md
+.promptfoo/
+promptfoo-output/

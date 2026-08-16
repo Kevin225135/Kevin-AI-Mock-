@@ -8,15 +8,22 @@ import type {
 
 export function buildReport(session: MockSession): Omit<Report, "id" | "createdAt"> {
   const feedback: ReportQuestionFeedback[] = session.questions.map((question) => {
-    const answer = session.answers.find(
-      (candidate) => candidate.questionId === question.id
-    );
+    const attempts = session.answers
+      .filter((candidate) => candidate.questionId === question.id)
+      .sort((a, b) => a.attemptNo - b.attemptNo);
+    const initialAnswer = attempts[0];
+    const answer = attempts.at(-1);
     const score = answer
       ? session.scores.find((candidate) => candidate.answerId === answer.id)
       : undefined;
 
     return {
       questionId: question.id,
+      initialAttemptId: initialAnswer?.id ?? "",
+      latestAttemptId: answer?.id ?? "",
+      attemptNo: answer?.attemptNo ?? 0,
+      attemptCount: attempts.length,
+      rubricVersionId: score?.rubricVersionId,
       prompt: question.prompt,
       answer: answer?.content ?? "",
       totalScore: score?.totalScore ?? 0,

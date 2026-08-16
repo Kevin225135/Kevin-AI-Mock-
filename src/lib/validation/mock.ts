@@ -15,6 +15,14 @@ export const submitAnswerSchema = z.object({
   sttStatus: z.enum(["COMPLETED", "FAILED", "NOT_USED"]).optional()
 });
 
+export const retryAnswerSchema = submitAnswerSchema.omit({ questionId: true });
+
+export const idempotencyKeySchema = z
+  .string()
+  .min(8)
+  .max(128)
+  .regex(/^[A-Za-z0-9._:-]+$/);
+
 export const eventSchema = z.object({
   name: z.string().min(2),
   sessionId: z.string().min(1).optional(),
