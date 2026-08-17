@@ -79,3 +79,17 @@
 - 状态：接受
 - 决策：数据库 Trace 保存 Retrieval/Model/Score/Decision/Tool/Output 步骤、版本、用量、成本、延迟和降级，只存引用、哈希和脱敏摘要。Bad Case 可绑定 Run、根因标签和回归用例。
 - 证据边界：工程 Gate 通过不等于用户改善。试点导出在分母为 0 时返回 `null`；真实参与者、访谈和复测完成前不发布效果数字。
+
+## ADR-013：冻结评测集与人工 Gold 分层
+
+- 状态：接受
+- 决策：历史 `EvalSample` 通过 `EvalDatasetVersion` 固定名称、版本、Rubric、内容哈希、来源和 TRAIN/VALIDATION/TEST 切分；冻结后只读，任何内容或标签变化都创建新版本。重复内容保留历史口径，但整个重复组只能进入同一 split。
+- 标签边界：314 条模板样本与 4 条历史 curated reference 均标记为 `REFERENCE_ONLY`，不得称为人工 Gold。只有两名独立盲标完成且无需仲裁，或第三人仲裁完成后，才能升级标签状态并报告人工一致率。
+- Gate：CI 从仓库内冻结文件运行，不依赖可变数据库；总体、类别和 TEST 为阻断切片，TRAIN/VALIDATION、模块和岗位在首轮人工校准前只作诊断。
+
+## ADR-014：Hybrid RAG 外部能力显式启用
+
+- 状态：接受
+- 决策：知识检索先独立取得 PostgreSQL 全文与向量候选，用 RRF 合并，再结合 reranker、来源权威度、过期时间和新鲜度形成最终排序。远端 embedding/reranker 必须通过环境变量显式启用且具备密钥；缺失配置、超时或异常时回退确定性本地实现并返回 provider/degraded 状态。
+- 数据一致性：知识条目的向量模型必须与查询 embedding provider/model 一致；切换 provider 后必须重建向量并重新运行版本化 Gold Query，不能用不同 provider 的向量混合声称语义收益。
+- 验收边界：V2-014 要求 Hybrid Recall@5 不低于旧排序，并报告 MRR@5、nDCG@5、P95 与 provider；非回退证明可合并，不等于已经证明线上效果提升。

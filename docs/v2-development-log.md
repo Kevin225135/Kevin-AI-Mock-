@@ -79,3 +79,27 @@
   - Langfuse 线上导出仍需要部署环境密钥，本地 PostgreSQL Trace 已可用；
   - GitHub HTTPS 传输问题未在本批次重新验证。
 - 决策：V2-006～012 工程任务关闭；下一项优先任务为 V2-013（历史样本转换、人工标注协议与分切片评测）。
+
+## 2026-08-17：V2-013～014 版本化评测与 Hybrid RAG
+
+- 目标：把历史评测资产变成可复现、不可冒充人工 Gold 的版本化数据集，并在不覆盖 V2-006～012 治理边界的前提下审查合入远端 Hybrid RAG 模块。
+- 本次改动：
+  - 新增 `EvalDatasetVersion`、稳定 `sampleKey`、split/source/label/content hash 与双盲标注角色；17 号迁移完成 318 条历史数据回填；
+  - 冻结 `ai-mock-v2-legacy@1.0.0` JSONL + manifest，固定 SHA-256、来源与切片；96 条重复内容被保留但没有跨 split 泄漏；
+  - 离线评测改为直接读取冻结文件，按总体、类别、模块、岗位和 split 输出；阻断与诊断切片分离；人工标注协议要求两名独立标注员、四维证据和第三人仲裁；
+  - 逐文件审查公开远端的 `embedding-provider`、`reranker`、`source-quality` 和 `knowledge-service` 思路，仅移植与本地 Schema/隐私/降级合同兼容的部分；
+  - 知识检索增加 PostgreSQL 全文候选、向量候选、RRF、来源权威度/过期/新鲜度与可选 reranker；远端 provider 仍为显式 opt-in，默认确定性本地 fallback；
+  - 新增 14 条双语 Gold Query、检索指标脚本和 `eval:ci`，CI 固定本地 provider，保证零外部调用。
+- 实际证据：
+  - 冻结集 318 条：TRAIN/VALIDATION/TEST=219/49/50，五类 category 全切片覆盖，314 synthetic + 4 curated reference，人工 Gold=0；内容哈希为 `d89cbd566f4ea8e55449d4c6cb15698197081ffca0567e981e2cf709855f6bc1`；
+  - 知识库 463 条；Gold Query 的 Hybrid Recall@5=1.0、MRR@5=0.95238、nDCG@5=0.96429，Recall@5 不低于旧排序，P95 低于 35ms；本地 provider、0 次外部调用；
+  - `eval:ci` 与 Promptfoo 4/4 通过；`typecheck`、`lint`、52/52 含数据库测试、17 个迁移和 Next.js production build 全部通过；
+  - `npm audit --omit=dev` 仍有 3 个 Next.js/PostCSS/Sharp high，自动修复要求 Next 16 破坏性升级；本机未安装 Gitleaks。
+- 限制：
+  - 当前 318 条全部为 reference-only，标注协议已就绪但真人双盲标注尚未执行，因此不能报告人工一致率或 Judge 校准；
+  - 本地 hash embedding 只证明离线可用性和非回退，不等价于真实语义 embedding，也没有证明 Hybrid 优于 legacy；
+  - 远端 embedding/reranker 未调用；启用后必须用相同 provider/model 重建知识向量，并另存 Gold Query 结果、成本和延迟；
+  - 真实用户试点分母仍为 0，V2-013/014 的工程关闭不代表训练效果已被验证；
+  - GitHub CLI 传输仍不可用，本轮只核对公开 raw 源文件，未 push、未部署。
+- 根因分类：DATA / EVAL / RETRIEVAL / GOVERNANCE。
+- 决策：V2-013 与 V2-014 工程任务关闭；下一项唯一优先任务为执行人工双盲校准子集，然后开展真实用户试点。

@@ -96,6 +96,12 @@ ARK_API_KEY="你的 Ark API Key"
 - `npm run lint`：代码规范检查
 - `npm run typecheck`：TypeScript 类型检查
 - `npm run worker:score`：启动预留的 BullMQ 评分 worker
+- `npm run eval:dataset:verify`：校验冻结评测集版本、内容哈希与切分
+- `npm run eval:retrieval`：运行 Hybrid RAG Gold Query 非回退门禁
+- `npm run eval:ci`：依次运行冻结集、切片评测、检索评测和 Promptfoo Gate
+- `npm run knowledge:seed`：用当前 embedding provider 重建双语知识库向量
+
+Hybrid RAG 默认使用本地确定性 embedding 与 reranker，不调用外部服务。只有同时显式设置 `EMBEDDING_PROVIDER="dashscope"`/`RERANK_ENABLED="true"` 及对应密钥时才会启用远端能力；切换 embedding provider 后需要重新执行 `npm run knowledge:seed`。
 
 ## 目录
 
@@ -104,6 +110,8 @@ ARK_API_KEY="你的 Ark API Key"
 - `src/lib/domain`：核心业务流程与类型
 - `src/lib/ai`：评分 schema、prompt 与 scorer
 - `src/lib/rag`：岗位能力词库、简历检索、回答缺口分析与追问决策
+- `src/lib/knowledge`：双语知识库、全文/向量候选、RRF、重排与来源质量
+- `src/lib/evals`、`evals`：版本化评测集、Gold Query 与离线门禁
 - `src/lib/repositories`：数据访问接口与 Prisma/PostgreSQL 仓库
 - `src/lib/analytics`：埋点事件定义
 - `src/workers`：异步 worker 入口

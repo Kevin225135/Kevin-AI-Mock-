@@ -38,6 +38,16 @@
 - Gate：`typecheck`、`lint`、Promptfoo 4/4、Next.js 生产构建全部通过。
 - 未覆盖：真实用户访谈、人工 Gold Query/Judge 校准、等价题迁移效果；分别进入真实试点和 V2-013。
 
+## V2-013～014 验证结果（2026-08-17）
+
+- 冻结数据集：`ai-mock-v2-legacy@1.0.0` 共 318 条，SHA-256 为 `d89cbd566f4ea8e55449d4c6cb15698197081ffca0567e981e2cf709855f6bc1`；TRAIN/VALIDATION/TEST 为 219/49/50，五类 category 在三个 split 均有覆盖，96 条重复内容没有跨 split 泄漏。
+- 标签边界：314 条 legacy synthetic + 4 条 curated reference 全部为 `REFERENCE_ONLY`，人工 Gold 为 0；验证器和评测输出把人工一致率显示为 `PENDING`，标注协议规定双盲、四维证据与第三人仲裁阈值。
+- 自动评测：冻结文件评测与 Promptfoo 4/4 通过；总体 Schema 1.0、追问 1.0、安全 1.0、幻觉率 0。总体/类别/TEST 为阻断切片，模块及 TRAIN/VALIDATION 在人工校准前为诊断切片。
+- Retrieval：14 条双语 Gold Query、463 条知识条目；本地 fallback 下 Hybrid Recall@5=1.0、MRR@5=0.95238、nDCG@5=0.96429，Recall@5 不低于 legacy，P95 低于 35ms，外部调用为 0。该结果证明非回退，不声称优于 legacy 或线上效果提升。
+- 工程 Gate：17 个 Prisma 迁移同步；`typecheck`、`lint`、52/52（含数据库）tests、`eval:ci` 和 Next.js 15.5.23 production build 全部通过。
+- 安全基线：`npm audit --omit=dev` 仍报告 Next.js 间接依赖 PostCSS/Sharp 的 3 个 high，自动修复需要破坏性升级 Next 16；本机未安装 Gitleaks。本轮未擅自升级或豁免，分别进入独立 hardening 任务。
+- 未覆盖：真人双盲标注、远端 embedding/reranker 质量与成本、真实用户试点、线上 Trace，以及 Next 16 兼容性升级。
+
 ## P0 退出条件
 
 - 首答与至少一次重答均可回看，原文不被覆盖。

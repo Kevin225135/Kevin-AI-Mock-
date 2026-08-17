@@ -5,7 +5,12 @@ on:
     paths:
       - "src/lib/ai/**"
       - "src/lib/domain/**"
-      - "evals/promptfoo/**"
+      - "src/lib/evals/**"
+      - "src/lib/knowledge/**"
+      - "scripts/run-evals.ts"
+      - "scripts/run-retrieval-evals.ts"
+      - "scripts/verify-eval-dataset.ts"
+      - "evals/**"
       - "package.json"
       - "package-lock.json"
   push:
@@ -13,7 +18,12 @@ on:
     paths:
       - "src/lib/ai/**"
       - "src/lib/domain/**"
-      - "evals/promptfoo/**"
+      - "src/lib/evals/**"
+      - "src/lib/knowledge/**"
+      - "scripts/run-evals.ts"
+      - "scripts/run-retrieval-evals.ts"
+      - "scripts/verify-eval-dataset.ts"
+      - "evals/**"
 
 jobs:
   deterministic-evals:
@@ -21,6 +31,8 @@ jobs:
     timeout-minutes: 15
     env:
       AI_PROVIDER: local
+      EMBEDDING_PROVIDER: local
+      RERANK_ENABLED: "false"
       PROMPTFOO_PASS_RATE_THRESHOLD: "100"
       PROMPTFOO_DISABLE_TELEMETRY: "1"
     steps:
@@ -30,5 +42,4 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run eval:promptfoo
-
+      - run: npm run eval:ci

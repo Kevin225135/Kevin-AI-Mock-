@@ -27,4 +27,4 @@ V2 使用模块化单体：
 - 异步评分：在答案提交后投递 `ai-scoring` job，由 `src/workers/scoring-worker.ts` 消费。
 - 语音作答：向 `answers` 增加 `audioUrl`、`transcript`、`sttStatus` 字段。
 - 进步追踪：基于历史 `ai_scores` 聚合维度分趋势。
-- Hybrid RAG：当前词法 + 元数据检索通过统一服务封装，V2-014 在 Gold Query 证明收益后再接 embedding/reranker。
+- Hybrid RAG：PostgreSQL 全文检索与向量候选经 RRF 融合，再由本地或显式启用的远端 reranker 结合来源权威度、过期时间和新鲜度排序。默认使用确定性本地 embedding/reranker，不发起外部调用；切换远端 embedding 后必须用同一 provider/model 重建知识向量并重新运行 Gold Query Gate。
