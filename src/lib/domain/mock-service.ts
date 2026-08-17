@@ -16,6 +16,11 @@ import {
 } from "@/lib/observability/trace";
 import { compareAnswerAttempts } from "./attempt-comparison";
 import { DomainError } from "./errors";
+import {
+  completeRetestTrainingTask,
+  findDueRetest,
+  syncSessionWeaknesses
+} from "./training-service";
 import type {
   AttemptComparison,
   CreateSessionInput,
@@ -37,22 +42,38 @@ export async function createMockSession(
   const normalizedInput = input.resumeId
     ? { ...input, module: "CV_RELATED" as const }
     : input;
-  const questions = input.resumeId
-    ? await createResumeQuestions({
-        resumeId: input.resumeId,
-        targetRole: input.targetRole,
-        difficulty: input.difficulty,
-        questionCount: input.questionCount,
-        actor
-      })
-    : (
-        await store.listQuestions({
-          module: normalizedInput.module,
-          targetRole: input.targetRole,
-          difficulty: input.difficulty,
-          userId: actor.id
-        })
-      ).slice(0, input.questionCount);
+  const dueRetest = await findDueRetest({
+    userId: actor.id,
+    module: normalizedInput.module,
+    targetRole: input.targetRole,
+    difficulty: input.difficulty
+  });
+  const baseQuestionCount = input.questionCount - (dueRetest ? 1 : 0);
+  const baseQuestions =
+    baseQuestionCount === 0
+      ? []
+      : input.resumeId
+        ? await createResumeQuestions({
+            resumeId: input.resumeId,
+            targetRole: input.targetRole,
+            difficulty: input.difficulty,
+            questionCount: baseQuestionCount,
+            actor
+          })
+        : (
+            await store.listQuestions({
+              module: normalizedInput.module,
+              targetRole: input.targetRole,
+              difficulty: input.difficulty,
+              userId: actor.id
+            })
+          ).slice(0, baseQuestionCount);
+  const questions = [
+    ...(dueRetest ? [dueRetest.question] : []),
+    ...baseQuestions.filter(
+      (question) => question.id !== dueRetest?.question.id
+    )
+  ].slice(0, input.questionCount);
 
   if (questions.length < input.questionCount) {
     throw new Error(
@@ -64,7 +85,8 @@ export async function createMockSession(
     {
       ...input,
       ...normalizedInput,
-      userId: actor.id
+      userId: actor.id,
+      trainingTaskId: dueRetest?.trainingTaskId
     },
     questions
   );
@@ -77,7 +99,8 @@ export async function createMockSession(
       module: normalizedInput.module,
       targetRole: input.targetRole,
       difficulty: input.difficulty,
-      questionCount: questions.length
+      questionCount: questions.length,
+      trainingTaskId: dueRetest?.trainingTaskId
     }
   });
 
@@ -205,7 +228,18 @@ async function finalizeSavedAnswer({
     question: expectedQuestion,
     answer: input.content
   });
-  await store.saveScore(existing.id, answerId, score, expectedQuestion.rubricVersionId);
+  const savedScore = await store.saveScore(
+    existing.id,
+    answerId,
+    score,
+    expectedQuestion.rubricVersionId
+  );
+  await completeRetestTrainingTask({
+    sessionId: existing.id,
+    questionId: input.questionId,
+    answerId,
+    dimensions: savedScore.dimensions
+  });
 
   await store.trackEvent({
     name: analyticsEvents.scoreGenerated,
@@ -263,6 +297,7 @@ async function finalizeSavedAnswer({
 
   if (isComplete) {
     const report = await store.saveReport(buildReport(latest));
+    await syncSessionWeaknesses(latest, report);
     await store.trackEvent({
       name: analyticsEvents.mockComplete,
       sessionId: existing.id,
@@ -322,6 +357,9 @@ export async function getReport(sessionId: string, actor: CurrentUser) {
       report.questionFeedback.some((item) => !item.latestAttemptId)
     ) {
       report = await store.saveReport(buildReport(session));
+    }
+    if (session.status === "COMPLETED") {
+      await syncSessionWeaknesses(session, report);
     }
     await store.trackEvent({
       name: analyticsEvents.reportView,
@@ -444,6 +482,7 @@ export async function retryAnswerAttempt(
     throw new Error("Session disappeared after retry scoring.");
   }
   const report = await store.saveReport(buildReport(refreshedSession));
+  await syncSessionWeaknesses(refreshedSession, report);
 
   return { attempt: retry.answer, comparison, report, runId };
 }

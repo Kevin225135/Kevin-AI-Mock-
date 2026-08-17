@@ -26,7 +26,8 @@ export const prismaDataStore: AppDataStore = {
       where: {
         module: filter.module as any,
         targetRole: filter.targetRole,
-        difficulty: filter.difficulty as any
+        difficulty: filter.difficulty as any,
+        NOT: { externalId: { startsWith: "v2-retest-" } }
       },
       orderBy: { createdAt: "asc" }
     });
@@ -57,6 +58,20 @@ export const prismaDataStore: AppDataStore = {
       });
 
       await consumeSessionQuota(tx, input.userId, created.id);
+      if (input.trainingTaskId) {
+        const claimed = await tx.trainingTask.updateMany({
+          where: {
+            id: input.trainingTaskId,
+            userId: input.userId,
+            status: "PENDING",
+            retestSessionId: null
+          },
+          data: { status: "IN_PROGRESS", retestSessionId: created.id }
+        });
+        if (claimed.count !== 1) {
+          throw new Error("The due retest task is no longer available.");
+        }
+      }
       return created;
     });
 
@@ -126,6 +141,15 @@ export const prismaDataStore: AppDataStore = {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
+    const retestTask = await prisma.trainingTask.findFirst({
+      where: {
+        retestSessionId: sessionId,
+        equivalentQuestionId: input.questionId,
+        status: "IN_PROGRESS"
+      },
+      select: { id: true }
+    });
+
     await prisma.answer.upsert({
       where: {
         sessionId_questionId_followUpRound_attemptNo: {
@@ -145,7 +169,7 @@ export const prismaDataStore: AppDataStore = {
         sttStatus: input.sttStatus,
         followUpRound: session.followUpRound,
         attemptNo: 1,
-        attemptKind: "INITIAL"
+        attemptKind: retestTask ? "RETEST" : "INITIAL"
       }
     });
 

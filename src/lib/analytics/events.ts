@@ -9,7 +9,9 @@ export const analyticsEvents = {
   badcaseReport: "badcase_report",
   scoreRetryClick: "score_retry_click",
   answerRetrySubmitted: "answer_retry_submitted",
-  answerRetryCompleted: "answer_retry_completed"
+  answerRetryCompleted: "answer_retry_completed",
+  planCreated: "plan_created",
+  retestCompleted: "retest_completed"
 } as const;
 
 export type AnalyticsEventName =

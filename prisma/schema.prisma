@@ -34,6 +34,35 @@ enum AnswerAttemptKind {
   RETEST
 }
 
+enum WeaknessDimension {
+  STAR_COMPLETENESS
+  LOGIC_STRUCTURE
+  CONTENT_DEPTH
+  COMMUNICATION
+}
+
+enum WeaknessSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum WeaknessStatus {
+  PROPOSED
+  CONFIRMED
+  IGNORED
+  NOT_IMPROVED
+  IMPROVING
+  PASSED
+}
+
+enum TrainingTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -80,6 +109,8 @@ model User {
   usagePeriods      UsagePeriod[]
   usageLedger       UsageLedger[]
   sessions          MockSession[]
+  weaknesses        Weakness[]
+  trainingTasks     TrainingTask[]
   resumes           Resume[]
   events            Event[]
   ragTraces         RagRetrievalTrace[]
@@ -172,20 +203,22 @@ model UsageLedger {
 }
 
 model QuestionBank {
-  id               String          @id @default(cuid())
-  externalId       String          @unique @map("external_id")
-  module           InterviewModule
-  targetRole       String          @map("target_role")
-  difficulty       Difficulty      @default(MEDIUM)
-  prompt           String
-  expectation      String?
-  keywords         String[]        @default([])
-  retrievalContext Json?           @map("retrieval_context")
-  rubricVersionId  String?         @map("rubric_version_id")
-  rubricVersion    RubricVersion?  @relation(fields: [rubricVersionId], references: [id])
-  answers          Answer[]
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  id                      String          @id @default(cuid())
+  externalId              String          @unique @map("external_id")
+  module                  InterviewModule
+  targetRole              String          @map("target_role")
+  difficulty              Difficulty      @default(MEDIUM)
+  prompt                  String
+  expectation             String?
+  keywords                String[]        @default([])
+  retrievalContext        Json?           @map("retrieval_context")
+  rubricVersionId         String?         @map("rubric_version_id")
+  rubricVersion           RubricVersion?  @relation(fields: [rubricVersionId], references: [id])
+  answers                 Answer[]
+  sourceTrainingTasks     TrainingTask[]  @relation("TrainingTaskSourceQuestion")
+  equivalentTrainingTasks TrainingTask[]  @relation("TrainingTaskEquivalentQuestion")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
 
   @@index([module, targetRole, difficulty])
   @@map("question_bank")
@@ -258,6 +291,8 @@ model MockSession {
   answers              Answer[]
   scores               AiScore[]
   report               Report?
+  weaknesses           Weakness[]
+  retestTrainingTasks  TrainingTask[]      @relation("TrainingTaskRetestSession")
   events               Event[]
   ragTraces            RagRetrievalTrace[]
   createdAt            DateTime            @default(now()) @map("created_at")
@@ -269,24 +304,26 @@ model MockSession {
 }
 
 model Answer {
-  id             String            @id @default(cuid())
-  sessionId      String            @map("session_id")
-  session        MockSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  questionId     String            @map("question_id")
-  question       QuestionBank      @relation(fields: [questionId], references: [id])
-  content        String
-  followUpRound  Int               @default(0) @map("follow_up_round")
-  attemptNo      Int               @default(1) @map("attempt_no")
-  attemptKind    AnswerAttemptKind @default(INITIAL) @map("attempt_kind")
-  parentAnswerId String?           @map("parent_answer_id")
-  parentAnswer   Answer?           @relation("AnswerRetries", fields: [parentAnswerId], references: [id], onDelete: SetNull)
-  retryAttempts  Answer[]          @relation("AnswerRetries")
-  idempotencyKey String?           @unique @map("idempotency_key")
-  audioUrl       String?           @map("audio_url")
-  transcript     String?
-  sttStatus      String?           @map("stt_status")
-  score          AiScore?
-  submittedAt    DateTime          @default(now()) @map("submitted_at")
+  id                     String            @id @default(cuid())
+  sessionId              String            @map("session_id")
+  session                MockSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId             String            @map("question_id")
+  question               QuestionBank      @relation(fields: [questionId], references: [id])
+  content                String
+  followUpRound          Int               @default(0) @map("follow_up_round")
+  attemptNo              Int               @default(1) @map("attempt_no")
+  attemptKind            AnswerAttemptKind @default(INITIAL) @map("attempt_kind")
+  parentAnswerId         String?           @map("parent_answer_id")
+  parentAnswer           Answer?           @relation("AnswerRetries", fields: [parentAnswerId], references: [id], onDelete: SetNull)
+  retryAttempts          Answer[]          @relation("AnswerRetries")
+  weaknessEvidence       Weakness[]        @relation("WeaknessSourceAnswer")
+  completedTrainingTasks TrainingTask[]    @relation("TrainingTaskRetestAnswer")
+  idempotencyKey         String?           @unique @map("idempotency_key")
+  audioUrl               String?           @map("audio_url")
+  transcript             String?
+  sttStatus              String?           @map("stt_status")
+  score                  AiScore?
+  submittedAt            DateTime          @default(now()) @map("submitted_at")
 
   @@unique([sessionId, questionId, followUpRound, attemptNo])
   @@index([sessionId, submittedAt])
@@ -333,6 +370,60 @@ model Report {
   createdAt         DateTime    @default(now()) @map("created_at")
 
   @@map("reports")
+}
+
+model Weakness {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId       String            @map("session_id")
+  session         MockSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceAnswerId  String            @map("source_answer_id")
+  sourceAnswer    Answer            @relation("WeaknessSourceAnswer", fields: [sourceAnswerId], references: [id], onDelete: Cascade)
+  dimension       WeaknessDimension
+  title           String
+  evidenceRef     String            @map("evidence_ref")
+  evidenceSummary String            @map("evidence_summary")
+  severity        WeaknessSeverity
+  status          WeaknessStatus    @default(PROPOSED)
+  baselineScore   Int               @map("baseline_score")
+  latestScore     Int?              @map("latest_score")
+  dueAt           DateTime?         @map("due_at")
+  confirmedAt     DateTime?         @map("confirmed_at")
+  ignoredAt       DateTime?         @map("ignored_at")
+  trainingTasks   TrainingTask[]
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@unique([sessionId, dimension])
+  @@index([userId, status, dueAt])
+  @@map("weaknesses")
+}
+
+model TrainingTask {
+  id                   String             @id @default(cuid())
+  weaknessId           String             @map("weakness_id")
+  weakness             Weakness           @relation(fields: [weaknessId], references: [id], onDelete: Cascade)
+  userId               String             @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceQuestionId     String             @map("source_question_id")
+  sourceQuestion       QuestionBank       @relation("TrainingTaskSourceQuestion", fields: [sourceQuestionId], references: [id])
+  equivalentQuestionId String             @map("equivalent_question_id")
+  equivalentQuestion   QuestionBank       @relation("TrainingTaskEquivalentQuestion", fields: [equivalentQuestionId], references: [id])
+  status               TrainingTaskStatus @default(PENDING)
+  dueAt                DateTime           @map("due_at")
+  retestSessionId      String?            @map("retest_session_id")
+  retestSession        MockSession?       @relation("TrainingTaskRetestSession", fields: [retestSessionId], references: [id], onDelete: SetNull)
+  retestAnswerId       String?            @map("retest_answer_id")
+  retestAnswer         Answer?            @relation("TrainingTaskRetestAnswer", fields: [retestAnswerId], references: [id], onDelete: SetNull)
+  completedAt          DateTime?          @map("completed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId, status, dueAt])
+  @@index([weaknessId, createdAt])
+  @@index([retestSessionId, equivalentQuestionId])
+  @@map("training_tasks")
 }
 
 model RubricVersion {

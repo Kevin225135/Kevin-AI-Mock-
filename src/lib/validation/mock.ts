@@ -17,6 +17,14 @@ export const submitAnswerSchema = z.object({
 
 export const retryAnswerSchema = submitAnswerSchema.omit({ questionId: true });
 
+export const weaknessActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("CONFIRM"),
+    dueAt: z.string().datetime({ offset: true })
+  }),
+  z.object({ action: z.literal("IGNORE") })
+]);
+
 export const idempotencyKeySchema = z
   .string()
   .min(8)

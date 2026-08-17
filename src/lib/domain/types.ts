@@ -33,6 +33,28 @@ export type ScoreDimension =
   | "contentDepth"
   | "communication";
 
+export type WeaknessDimension =
+  | "STAR_COMPLETENESS"
+  | "LOGIC_STRUCTURE"
+  | "CONTENT_DEPTH"
+  | "COMMUNICATION";
+
+export type WeaknessSeverity = "LOW" | "MEDIUM" | "HIGH";
+
+export type WeaknessStatus =
+  | "PROPOSED"
+  | "CONFIRMED"
+  | "IGNORED"
+  | "NOT_IMPROVED"
+  | "IMPROVING"
+  | "PASSED";
+
+export type TrainingTaskStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
 export type DimensionScores = Record<ScoreDimension, number>;
 
 export type Question = {
@@ -143,6 +165,40 @@ export type Report = {
   createdAt: string;
 };
 
+export type TrainingTask = {
+  id: string;
+  weaknessId: string;
+  status: TrainingTaskStatus;
+  dueAt: string;
+  sourceQuestionId: string;
+  equivalentQuestion: Question;
+  retestSessionId?: string;
+  retestAnswerId?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Weakness = {
+  id: string;
+  sessionId: string;
+  sourceAnswerId: string;
+  dimension: WeaknessDimension;
+  title: string;
+  evidenceRef: string;
+  evidenceSummary: string;
+  severity: WeaknessSeverity;
+  status: WeaknessStatus;
+  baselineScore: number;
+  latestScore?: number;
+  dueAt?: string;
+  confirmedAt?: string;
+  ignoredAt?: string;
+  latestTrainingTask?: TrainingTask;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type MockSession = {
   id: string;
   userId: string;
@@ -170,6 +226,7 @@ export type CreateSessionInput = {
   difficulty: Difficulty;
   questionCount: number;
   resumeId?: string;
+  trainingTaskId?: string;
 };
 
 export type SubmitAnswerInput = {
