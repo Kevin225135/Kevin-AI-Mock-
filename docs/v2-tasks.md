@@ -25,10 +25,11 @@
 | V2-008 | DONE | Fact/Preference/Weakness/TrainingState/Temporary 分离；来源、置信度、过期、CRUD、隔离、拒绝墓碑与级联删除 |
 | V2-013 | DONE | 318 条历史样本冻结为 `ai-mock-v2-legacy@1.0.0`；稳定切分/哈希、双盲标注协议和总体/类别/模块/岗位/split Gate 齐全；人工 Gold 仍为 0 |
 | V2-014 | DONE | 逐文件审查并合入 embedding/RRF/reranker/source-quality；14 条双语 Gold Query 的 Recall@5 无回退，外部调用保持显式 opt-in |
+| V2-015 | DONE | 单场题量上限由 4 提升到 10；简历题按证据核验/方案取舍/结果验证生成多角度唯一问题，UI、API 与检索回归通过 |
 
 ## 本轮交付顺序
 
-1. `DONE`：V2-002～014 的工程交付已关闭；首答 → 重答 → 弱点复测、受控 Agent、Trace/Bad Case、安全降级、内容治理、双域/Hybrid RAG、Memory、版本化评测与试点工程包均有自动化证据。
+1. `DONE`：V2-002～015 的工程交付已关闭；首答 → 重答 → 弱点复测、受控 Agent、Trace/Bad Case、安全降级、内容治理、双域/Hybrid RAG、Memory、版本化评测、10 题简历面试与试点工程包均有自动化证据。
 2. `NEXT`：按 `v2-eval-annotation-protocol.md` 先对校准子集执行两名独立标注员 + 第三人仲裁，把 `REFERENCE_ONLY` 样本逐版本升级为人工 Gold；当前人工 Gold 仍为 0。
 3. `VALIDATE`：按 `v2-pilot-research-pack.md` 招募真实用户执行 V2-012 试点；当前参与者/事件分母为 0，不声称用户效果。
 4. `HARDEN`：单独规划 Next.js 16 兼容性升级，处理 `npm audit` 报告的 3 个 high；补装 Gitleaks 后执行仓库与工作区双扫描。

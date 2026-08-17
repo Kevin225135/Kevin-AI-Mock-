@@ -18,7 +18,10 @@ import {
   Timer
 } from "lucide-react";
 import {
+  DEFAULT_MOCK_QUESTIONS,
   difficultyOptions,
+  MAX_MOCK_QUESTIONS,
+  MIN_MOCK_QUESTIONS,
   moduleOptions,
   roleOptions
 } from "@/lib/domain/constants";
@@ -117,7 +120,7 @@ export function StartMockForm() {
   const [module, setModule] = useState<InterviewModule>("BEHAVIORAL");
   const [targetRole, setTargetRole] = useState<string>("Product Manager");
   const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
-  const [questionCount, setQuestionCount] = useState(3);
+  const [questionCount, setQuestionCount] = useState(DEFAULT_MOCK_QUESTIONS);
   const [resumes, setResumes] = useState<ResumeProfile[]>([]);
   const [resumeId, setResumeId] = useState<string>("");
   const [resumePrivacyAccepted, setResumePrivacyAccepted] = useState(false);
@@ -337,8 +340,9 @@ export function StartMockForm() {
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => setQuestionCount((value) => Math.max(1, value - 1))}
-                  disabled={questionCount <= 1}
+                  onClick={() => setQuestionCount((value) =>
+                    Math.max(MIN_MOCK_QUESTIONS, value - 1))}
+                  disabled={questionCount <= MIN_MOCK_QUESTIONS}
                   aria-label="减少题量"
                 >
                   <Minus className="size-4" />
@@ -350,8 +354,9 @@ export function StartMockForm() {
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => setQuestionCount((value) => Math.min(4, value + 1))}
-                  disabled={questionCount >= 4}
+                  onClick={() => setQuestionCount((value) =>
+                    Math.min(MAX_MOCK_QUESTIONS, value + 1))}
+                  disabled={questionCount >= MAX_MOCK_QUESTIONS}
                   aria-label="增加题量"
                 >
                   <Plus className="size-4" />

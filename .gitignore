@@ -11,3 +11,5 @@ prisma/dev.db
 .impeccable.md
 .promptfoo/
 promptfoo-output/
+.playwright-cli/
+*.traineddata

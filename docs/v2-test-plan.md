@@ -48,6 +48,14 @@
 - 安全基线：`npm audit --omit=dev` 仍报告 Next.js 间接依赖 PostCSS/Sharp 的 3 个 high，自动修复需要破坏性升级 Next 16；本机未安装 Gitleaks。本轮未擅自升级或豁免，分别进入独立 hardening 任务。
 - 未覆盖：真人双盲标注、远端 embedding/reranker 质量与成本、真实用户试点、线上 Trace，以及 Next 16 兼容性升级。
 
+## V2-015 验证结果（2026-08-17）
+
+- 合同：前端和 API 共用 `MIN/DEFAULT/MAX_MOCK_QUESTIONS=1/3/10`；Schema 接受 10，拒绝 0 和 11。
+- 检索：同一能力从证据核验、方案取舍、结果验证三个角度生成候选；稀疏 Software Engineer 简历请求 10 题时返回 10 道唯一问题，四类能力均被覆盖且每题至少有一条证据。
+- 回归：57/57 含数据库测试、TypeScript、ESLint 和 production build 通过；LLM 将多题改写为重复 Prompt 时，后续题回退原始唯一问题。
+- UI：Playwright 0.1.18 从默认 3 连续增加至 10；显示值为 10，增加按钮在上限正确禁用。主页和知识库 API 均返回 200；未登录的 `/api/auth/me`、`/api/resumes` 返回预期 401，另有既存 favicon 404。
+- 运行：重新生成 standalone build 并在 `http://localhost:3000` 启动；不修改数据库 Schema。
+
 ## P0 退出条件
 
 - 首答与至少一次重答均可回看，原文不被覆盖。

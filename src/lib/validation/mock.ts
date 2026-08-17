@@ -1,10 +1,18 @@
 import { z } from "zod";
+import {
+  DEFAULT_MOCK_QUESTIONS,
+  MAX_MOCK_QUESTIONS,
+  MIN_MOCK_QUESTIONS
+} from "@/lib/domain/constants";
 
 export const createSessionSchema = z.object({
   module: z.enum(["BEHAVIORAL", "CV_RELATED", "TECHNICAL", "MARKET"]),
   targetRole: z.string().min(2).max(80),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
-  questionCount: z.coerce.number().int().min(1).max(4).default(3),
+  questionCount: z.coerce.number().int()
+    .min(MIN_MOCK_QUESTIONS)
+    .max(MAX_MOCK_QUESTIONS)
+    .default(DEFAULT_MOCK_QUESTIONS),
   resumeId: z.string().min(1).optional()
 });
 

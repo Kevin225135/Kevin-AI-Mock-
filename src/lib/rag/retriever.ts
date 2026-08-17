@@ -39,7 +39,8 @@ export function retrieveResumeQuestions(input: {
   const evidence = buildEvidence(input.resume);
   const competencies = competenciesForRole(input.targetRole);
   const candidates = competencies
-    .map((competency) => rankCompetency(competency, evidence, input.targetRole, input.difficulty))
+    .flatMap((competency) =>
+      rankCompetencyVariants(competency, evidence, input.targetRole, input.difficulty))
     .filter((candidate) => candidate.context.evidence.length > 0)
     .sort((a, b) => b.score - a.score);
 
@@ -105,12 +106,12 @@ export function analyzeAnswerGaps(input: {
   };
 }
 
-function rankCompetency(
+function rankCompetencyVariants(
   competency: CompetencyKeyword,
   evidence: ReturnType<typeof buildEvidence>,
   targetRole: string,
   difficulty: Difficulty
-): RagQuestionCandidate {
+): RagQuestionCandidate[] {
   const keywordMatched = evidence
     .map((item) => {
       const matchedKeywords = competency.aliases.filter((alias) =>
@@ -124,38 +125,50 @@ function rankCompetency(
       evidencePriority(b.source) - evidencePriority(a.source)
     )
     .slice(0, 3);
-  const matched = keywordMatched.length > 0
+  const anchors = keywordMatched.length > 0
     ? keywordMatched
-    : evidence.slice(0, 1).map((item) => ({ ...item, matchedKeywords: [] as string[] }));
-  const anchor = matched[0]?.text ?? "";
-  const keywords = [...new Set(matched.flatMap((item) => item.matchedKeywords))];
-  const roleBonus = competency.roles.includes("*") ? 0 : 3;
-  const projectBonus = matched.some((item) => item.source === "project") ? 2 : 0;
-  const score = keywords.length * 3 + matched.length + roleBonus + projectBonus;
+    : evidence.slice(0, 3).map((item) => ({ ...item, matchedKeywords: [] as string[] }));
+  if (!anchors.length) return [];
   const difficultyInstruction =
     difficulty === "HARD" ? "请重点说明最困难的取舍和反事实方案。" :
     difficulty === "EASY" ? "请先清楚交代背景、职责、行动和结果。" :
     "请说明关键行动、决策依据和最终结果。";
-
-  return {
-    prompt: `你的材料中出现“${clip(anchor, 110)}”。请先确认或纠正这条信息；围绕${competency.label}，${competency.questionFocus}？${difficultyInstruction}`,
-    expectation: `回答应覆盖：${competency.expectedSignals.join("、")}。材料证据在用户确认前仅作提问线索，不得当作已验证事实或补写不存在的经历。`,
-    keywords,
-    context: {
-      competencyId: competency.id,
-      competencyLabel: competency.label,
-      evidence: matched.map(({ text, source, matchedKeywords }) => ({
-        text,
-        source,
-        matchedKeywords,
-        confirmationStatus: "UNCONFIRMED"
-      })),
-      expectedSignals: competency.expectedSignals,
-      researchSources: keywordResearchSources
-    },
-    score
-  };
+  return QUESTION_ANGLES.map((angle, angleIndex) => {
+    const primary = anchors[angleIndex % anchors.length];
+    const matched = [
+      primary,
+      ...anchors.filter((item) => item !== primary).slice(0, 2)
+    ];
+    const keywords = [...new Set(matched.flatMap((item) => item.matchedKeywords))];
+    const roleBonus = competency.roles.includes("*") ? 0 : 3;
+    const projectBonus = matched.some((item) => item.source === "project") ? 2 : 0;
+    const score = keywords.length * 3 + matched.length + roleBonus + projectBonus - angleIndex * 0.01;
+    return {
+      prompt: `你的材料中出现“${clip(primary.text, 110)}”。请先确认或纠正这条信息；围绕${competency.label}，${angle(competency)}？${difficultyInstruction}`,
+      expectation: `回答应覆盖：${competency.expectedSignals.join("、")}。材料证据在用户确认前仅作提问线索，不得当作已验证事实或补写不存在的经历。`,
+      keywords,
+      context: {
+        competencyId: competency.id,
+        competencyLabel: competency.label,
+        evidence: matched.map(({ text, source, matchedKeywords }) => ({
+          text,
+          source,
+          matchedKeywords,
+          confirmationStatus: "UNCONFIRMED" as const
+        })),
+        expectedSignals: competency.expectedSignals,
+        researchSources: keywordResearchSources
+      },
+      score
+    };
+  });
 }
+
+const QUESTION_ANGLES: Array<(competency: CompetencyKeyword) => string> = [
+  (competency) => competency.questionFocus,
+  () => "这段经历中最困难的取舍是什么，你比较过哪些替代方案，为什么这样选择",
+  () => "你如何定义成功、验证最终结果，并说明如果重来一次会调整什么"
+];
 
 function buildEvidence(resume: ResumeDocument) {
   return [
@@ -174,10 +187,19 @@ function buildEvidence(resume: ResumeDocument) {
 function diversify(candidates: RagQuestionCandidate[], limit: number) {
   const selected: RagQuestionCandidate[] = [];
   const competencies = new Set<string>();
+  const prompts = new Set<string>();
   for (const candidate of candidates) {
     if (!competencies.has(candidate.context.competencyId)) {
       selected.push(candidate);
       competencies.add(candidate.context.competencyId);
+      prompts.add(candidate.prompt);
+    }
+    if (selected.length >= limit) break;
+  }
+  for (const candidate of candidates) {
+    if (!prompts.has(candidate.prompt)) {
+      selected.push(candidate);
+      prompts.add(candidate.prompt);
     }
     if (selected.length >= limit) break;
   }

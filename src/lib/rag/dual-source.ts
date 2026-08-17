@@ -40,13 +40,29 @@ export async function refineQuestionsWithLlm(input: {
   ].join("\n\n");
   const result = await callArkRag(prompt, shouldSearchWeb(input.query));
   if (!result) return { candidates: input.candidates, webEvidence: [] as WebEvidence[] };
-  const refined = input.candidates.map((candidate, index) => {
-    const update = result.json.questions?.find((item) => item.index === index);
-    return update?.prompt
-      ? { ...candidate, prompt: update.prompt, expectation: update.expectation || candidate.expectation }
-      : candidate;
-  });
+  const refined = applyQuestionRefinements(input.candidates, result.json.questions ?? []);
   return { candidates: refined, webEvidence: result.webEvidence };
+}
+
+export function applyQuestionRefinements(
+  candidates: RagQuestionCandidate[],
+  updates: Array<{ index: number; prompt: string; expectation?: string }>
+) {
+  const seenPrompts = new Set<string>();
+  return candidates.map((candidate, index) => {
+    const update = updates.find((item) => item.index === index);
+    const proposed = update?.prompt
+      ? {
+          ...candidate,
+          prompt: update.prompt,
+          expectation: update.expectation || candidate.expectation
+        }
+      : candidate;
+    const proposedKey = normalizeQuestionPrompt(proposed.prompt);
+    const next = seenPrompts.has(proposedKey) ? candidate : proposed;
+    seenPrompts.add(normalizeQuestionPrompt(next.prompt));
+    return next;
+  });
 }
 
 export async function createLlmFollowUp(input: {
@@ -145,4 +161,8 @@ function extractWebEvidence(payload: any): WebEvidence[] {
     snippet: "Source returned by the LLM web-search tool.",
     retrievedAt: new Date().toISOString()
   }));
+}
+
+function normalizeQuestionPrompt(value: string) {
+  return value.toLowerCase().normalize("NFKC").replace(/\s+/g, " ").trim();
 }
