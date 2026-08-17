@@ -20,6 +20,9 @@
     "eval:annotate": "tsx --env-file=.env.local scripts/annotate-eval.ts",
     "eval:promptfoo": "npx --yes promptfoo@0.122.0 eval -c evals/promptfoo/promptfooconfig.yaml --no-cache",
     "knowledge:seed": "tsx --env-file=.env.local scripts/seed-knowledge.ts",
+    "patterns:audit": "tsx --env-file=.env.local scripts/audit-interview-patterns.ts",
+    "patterns:import": "tsx --env-file=.env.local scripts/import-interview-patterns.ts",
+    "pilot:export": "tsx --env-file=.env.local scripts/export-v2-pilot-events.ts",
     "privacy:purge": "tsx --env-file=.env.local scripts/purge-expired-resumes.ts",
     "ai:check": "tsx --env-file=.env.local scripts/check-ai-provider.ts"
   },

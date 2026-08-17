@@ -1,17 +1,8 @@
-export type InterviewModule =
-  | "BEHAVIORAL"
-  | "CV_RELATED"
-  | "TECHNICAL"
-  | "MARKET";
+export type InterviewModule = "BEHAVIORAL" | "CV_RELATED" | "TECHNICAL" | "MARKET";
 
 export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
-export type SessionStatus =
-  | "CREATED"
-  | "IN_PROGRESS"
-  | "SCORING"
-  | "COMPLETED"
-  | "FAILED";
+export type SessionStatus = "CREATED" | "IN_PROGRESS" | "SCORING" | "COMPLETED" | "FAILED";
 
 export type UserRole = "USER" | "ADMIN";
 
@@ -49,11 +40,24 @@ export type WeaknessStatus =
   | "IMPROVING"
   | "PASSED";
 
-export type TrainingTaskStatus =
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
+export type TrainingTaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export type MemoryItemType = "FACT" | "PREFERENCE" | "WEAKNESS" | "TRAINING_STATE" | "TEMPORARY";
+
+export type MemoryItemStatus = "PROPOSED" | "CONFIRMED" | "REJECTED";
+
+export type MemoryItem = {
+  id: string;
+  type: MemoryItemType;
+  status: MemoryItemStatus;
+  value: Record<string, unknown>;
+  sourceRef: string;
+  confidence: number;
+  expiresAt?: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type DimensionScores = Record<ScoreDimension, number>;
 
@@ -72,7 +76,12 @@ export type Question = {
 export type RagQuestionContext = {
   competencyId: string;
   competencyLabel: string;
-  evidence: Array<{ text: string; source: string; matchedKeywords: string[] }>;
+  evidence: Array<{
+    text: string;
+    source: string;
+    matchedKeywords: string[];
+    confirmationStatus?: "UNCONFIRMED";
+  }>;
   expectedSignals: string[];
   researchSources: string[];
   knowledgeEvidence?: Array<{
@@ -82,6 +91,24 @@ export type RagQuestionContext = {
     sourceUrl: string;
     score: number;
   }>;
+  interviewPatternEvidence?: Array<{
+    id: string;
+    question: string;
+    sourceTitle: string;
+    sourceUrl?: string;
+    rightsStatus: string;
+    score: number;
+  }>;
+  candidateMemoryEvidence?: Array<{
+    id: string;
+    sourceRef: string;
+    claim: string;
+    confidence: number;
+    score: number;
+    confirmationStatus: "CONFIRMED";
+  }>;
+  retrievalTraceId?: string;
+  degradationReasons?: string[];
   webEvidence?: Array<{
     title: string;
     url: string;

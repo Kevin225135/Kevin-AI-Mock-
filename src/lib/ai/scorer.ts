@@ -41,14 +41,20 @@ const marketReasoningSignals = [
 
 const DEFAULT_PROVIDER_TIMEOUT_MS = 15000;
 
-export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResult> {
+export async function scoreAnswer(
+  input: ScoreAnswerInput,
+  options: {
+    forceLocal?: boolean;
+    onFallback?: (reason: string) => void;
+  } = {}
+): Promise<AiScoreResult> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const raw =
-        process.env.AI_PROVIDER && process.env.AI_PROVIDER !== "local"
-          ? await scoreWithProvider(input)
+        !options.forceLocal && process.env.AI_PROVIDER && process.env.AI_PROVIDER !== "local"
+          ? await scoreWithProvider(input, options.onFallback)
           : scoreWithLocalRubric(input);
 
       return parseAiScore(raw);
@@ -60,21 +66,26 @@ export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResul
   throw lastError;
 }
 
-async function scoreWithProvider(input: ScoreAnswerInput) {
+async function scoreWithProvider(input: ScoreAnswerInput, onFallback?: (reason: string) => void) {
   try {
     if (process.env.AI_PROVIDER === "ark") {
-      return await scoreWithArkResponses(input);
+      return await scoreWithArkResponses(input, onFallback);
     }
 
-    return await scoreWithOpenAiCompatible(input);
-  } catch {
+    return await scoreWithOpenAiCompatible(input, onFallback);
+  } catch (error) {
+    onFallback?.(isTimeoutError(error) ? "PROVIDER_TIMEOUT" : "PROVIDER_ERROR");
     return scoreWithLocalRubric(input);
   }
 }
 
-async function scoreWithArkResponses(input: ScoreAnswerInput) {
+async function scoreWithArkResponses(
+  input: ScoreAnswerInput,
+  onFallback?: (reason: string) => void
+) {
   const apiKey = process.env.ARK_API_KEY ?? process.env.AI_API_KEY;
   if (!apiKey) {
+    onFallback?.("PROVIDER_CONFIG_MISSING");
     return scoreWithLocalRubric(input);
   }
 
@@ -109,6 +120,7 @@ async function scoreWithArkResponses(input: ScoreAnswerInput) {
   });
 
   if (!response.ok) {
+    onFallback?.("PROVIDER_HTTP_ERROR");
     return scoreWithLocalRubric(input);
   }
 
@@ -116,14 +128,19 @@ async function scoreWithArkResponses(input: ScoreAnswerInput) {
   const content = extractProviderText(payload);
 
   if (!content) {
+    onFallback?.("PROVIDER_EMPTY_RESPONSE");
     return scoreWithLocalRubric(input);
   }
 
   return parseProviderJson(content);
 }
 
-async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
+async function scoreWithOpenAiCompatible(
+  input: ScoreAnswerInput,
+  onFallback?: (reason: string) => void
+) {
   if (!process.env.AI_API_BASE_URL || !process.env.AI_API_KEY) {
+    onFallback?.("PROVIDER_CONFIG_MISSING");
     return scoreWithLocalRubric(input);
   }
 
@@ -148,6 +165,7 @@ async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
   });
 
   if (!response.ok) {
+    onFallback?.("PROVIDER_HTTP_ERROR");
     return scoreWithLocalRubric(input);
   }
 
@@ -157,6 +175,7 @@ async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
   const content = payload.choices?.[0]?.message?.content;
 
   if (!content) {
+    onFallback?.("PROVIDER_EMPTY_RESPONSE");
     return scoreWithLocalRubric(input);
   }
 
@@ -248,6 +267,10 @@ function getProviderTimeoutMs() {
   return Number.isFinite(timeout) && timeout > 0
     ? timeout
     : DEFAULT_PROVIDER_TIMEOUT_MS;
+}
+
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

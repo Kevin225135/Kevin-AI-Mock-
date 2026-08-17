@@ -2,6 +2,7 @@ import { canAccessOwnedResource } from "@/lib/auth/permissions";
 import { analyticsEvents } from "@/lib/analytics/events";
 import { prisma } from "@/lib/repositories/prisma-client";
 import { DomainError } from "./errors";
+import { upsertWorkflowMemory } from "./memory-service";
 import {
   buildEquivalentRetestPrompt,
   deriveWeaknessCandidates,
@@ -92,6 +93,10 @@ export async function syncSessionWeaknesses(
       }
     }
   });
+  const current = await prisma.weakness.findMany({
+    where: { sessionId: session.id }
+  });
+  await Promise.all(current.map(syncWeaknessMemory));
 }
 
 export async function listSessionWeaknesses(
@@ -339,6 +344,17 @@ export async function completeRetestTrainingTask(input: {
       }
     });
   });
+  await loadWeakness(task.weaknessId);
+}
+
+export async function refreshTrainingTaskMemory(trainingTaskId: string) {
+  const task = await prisma.trainingTask.findUnique({
+    where: { id: trainingTaskId },
+    include: { weakness: true }
+  });
+  if (!task) return;
+  await syncTrainingTaskMemory(task.userId, task.weaknessId, task);
+  await syncWeaknessMemory(task.weakness);
 }
 
 async function loadSessionWeaknesses(sessionId: string): Promise<Weakness[]> {
@@ -368,7 +384,75 @@ async function loadWeakness(weaknessId: string): Promise<Weakness> {
       }
     }
   });
+  await syncWeaknessMemory(row);
+  const latestTask = row.trainingTasks[0];
+  if (latestTask) {
+    await syncTrainingTaskMemory(row.userId, row.id, latestTask);
+  }
   return mapWeakness(row);
+}
+
+async function syncWeaknessMemory(row: {
+  id: string;
+  userId: string;
+  dimension: string;
+  title: string;
+  evidenceRef: string;
+  severity: string;
+  status: string;
+  baselineScore: number;
+  latestScore: number | null;
+  dueAt: Date | null;
+}) {
+  await upsertWorkflowMemory({
+    userId: row.userId,
+    type: "WEAKNESS",
+    sourceRef: `weakness:${row.id}`,
+    value: {
+      weaknessId: row.id,
+      dimension: row.dimension,
+      title: row.title,
+      severity: row.severity,
+      trainingStatus: row.status,
+      baselineScore: row.baselineScore,
+      latestScore: row.latestScore,
+      evidenceRef: row.evidenceRef,
+      dueAt: row.dueAt?.toISOString() ?? null
+    },
+    status:
+      row.status === "PROPOSED" ? "PROPOSED" : row.status === "IGNORED" ? "REJECTED" : "CONFIRMED",
+    confidence: 1
+  });
+}
+
+async function syncTrainingTaskMemory(
+  userId: string,
+  weaknessId: string,
+  task: {
+    id: string;
+    status: string;
+    dueAt: Date;
+    retestSessionId: string | null;
+    retestAnswerId: string | null;
+    completedAt: Date | null;
+  }
+) {
+  await upsertWorkflowMemory({
+    userId,
+    type: "TRAINING_STATE",
+    sourceRef: `training-task:${task.id}`,
+    value: {
+      trainingTaskId: task.id,
+      weaknessId,
+      trainingStatus: task.status,
+      dueAt: task.dueAt.toISOString(),
+      retestSessionId: task.retestSessionId,
+      retestAnswerId: task.retestAnswerId,
+      completedAt: task.completedAt?.toISOString() ?? null
+    },
+    status: task.status === "CANCELLED" ? "REJECTED" : "CONFIRMED",
+    confidence: 1
+  });
 }
 
 function mapWeakness(row: any): Weakness {

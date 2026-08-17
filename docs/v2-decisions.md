@@ -33,13 +33,13 @@
 
 ## ADR-006：开源资源分级
 
-| 项目 | 决策 | 阶段 |
-|---|---|---|
-| Langfuse JS SDK | 通过 TraceSink 条件接入 | P0 |
-| Promptfoo | 固化评测集、CI Gate 与红队用例 | P0 |
-| XState | 仅在 Weakness/Retest 状态复杂度达到阈值后做小范围试验 | P1 条件 |
-| pgvector | 复用现有 PostgreSQL；先全文/混合检索，数据证明需要后再启 HNSW | P1 条件 |
-| Mem0 | 仅 PoC，与自建结构化 Memory 做召回/删除正确性对比 | P2 |
+| 项目            | 决策                                                          | 阶段    |
+| --------------- | ------------------------------------------------------------- | ------- |
+| Langfuse JS SDK | 通过 TraceSink 条件接入                                       | P0      |
+| Promptfoo       | 固化评测集、CI Gate 与红队用例                                | P0      |
+| XState          | 仅在 Weakness/Retest 状态复杂度达到阈值后做小范围试验         | P1 条件 |
+| pgvector        | 复用现有 PostgreSQL；先全文/混合检索，数据证明需要后再启 HNSW | P1 条件 |
+| Mem0            | 仅 PoC，与自建结构化 Memory 做召回/删除正确性对比             | P2      |
 
 ## ADR-007：弱点建议与训练状态分离
 
@@ -48,3 +48,34 @@
 - 不变量：每个 Session 最多 3 个弱点；每条弱点必须绑定来源 Attempt；普通题库不得抽到内部复测题；同一到期任务只能被一个新 Session 抢占。
 - 复测阈值：低于或等于基线为 `NOT_IMPROVED`；高于基线但未稳定达到 4/5 为 `IMPROVING`；高于基线且达到 4/5 为 `PASSED`。
 - 原因：将模型诊断与用户训练状态解耦，避免模型未经确认持久化“记忆”或伪造改善结论。
+
+## ADR-008：有限 Agent 只建议，Workflow 决定状态
+
+- 状态：接受
+- 决策：追问输出只允许 `DEEPEN/CHALLENGE/NEXT/STOP` 和 `MISSING_EVIDENCE/VAGUE_OWNERSHIP/METRIC_UNCLEAR/OFF_TOPIC/COMPLETE`；最多两轮。
+- Tool：只允许 `retrieve_candidate_evidence`、`retrieve_interview_patterns`、`get_training_memory`、`none`。Tool 只读，状态更新仍由服务层完成。
+- 降级：非法/低置信度输出、Tool 超时/错误和成本越界退回确定性规则或审核题库，并写 Trace。
+
+## ADR-009：面经先过摄取审计，再进入检索
+
+- 状态：接受
+- 决策：面经记录来源、采集方式、许可、岗位/公司/能力/项目标签、去重哈希、质量分、拒收原因和更新时间；每次摄取另存 `ACCEPTED/UPDATED/DUPLICATE/REJECTED` 审计。
+- 发布门槛：只有允许的许可状态、质量通过、无 Prompt Injection 且明确发布的记录可检索。许可不明的数据不得因“公开可见”自动晋升。
+
+## ADR-010：双域检索不混淆材料线索与已确认事实
+
+- 状态：接受
+- 决策：用户证据域只返回当前用户、`CONFIRMED`、未过期的 Fact；面试知识域只返回已审核面经。两域分别返回 ID、分数和过滤器，再组成统一 Trace。
+- 事实边界：简历原文标记为 `UNCONFIRMED`，只能用于请求用户确认；只有已确认 Memory 可作为事实进入个性化上下文。零召回和超时必须显式降级。
+
+## ADR-011：结构化 Memory 由来源和所有者约束
+
+- 状态：接受
+- 决策：Fact/Preference 可由用户创建和修改；Weakness/TrainingState 只由确定性 Workflow 更新；所有 Memory 记录来源、置信度、状态、版本和过期时间。
+- 删除：普通 Memory 物理删除；Workflow Memory 删除后写入不含敏感内容的拒绝墓碑，阻止后台静默重建；账户删除通过外键级联清除全部 Memory。
+
+## ADR-012：Trace 与产品效果证据分层
+
+- 状态：接受
+- 决策：数据库 Trace 保存 Retrieval/Model/Score/Decision/Tool/Output 步骤、版本、用量、成本、延迟和降级，只存引用、哈希和脱敏摘要。Bad Case 可绑定 Run、根因标签和回归用例。
+- 证据边界：工程 Gate 通过不等于用户改善。试点导出在分母为 0 时返回 `null`；真实参与者、访谈和复测完成前不发布效果数字。

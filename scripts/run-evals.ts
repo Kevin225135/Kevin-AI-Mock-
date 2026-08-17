@@ -43,7 +43,13 @@ for (const sample of samples) {
     }
     if (sample.expectedFollowUp) {
       followUpCount += 1;
-      if (decideFollowUp(sample.answer, result.totalScore, 0) === sample.expectedFollowUp) followUpMatches += 1;
+      const expectedAction =
+        sample.expectedFollowUp === "CLARIFY"
+          ? "CHALLENGE"
+          : sample.expectedFollowUp === "CLOSE"
+            ? "STOP"
+            : sample.expectedFollowUp;
+      if (decideFollowUp(sample.answer, result.totalScore, 0).action === expectedAction) followUpMatches += 1;
     }
   } catch { failures.push({ id: sample.id, expected: sample.humanScore, actual: -1 }); }
 }

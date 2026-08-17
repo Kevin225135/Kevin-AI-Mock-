@@ -2,13 +2,13 @@
 
 ## 自动化层级
 
-| 层级 | 必测内容 |
-|---|---|
-| 单元 | Attempt 编号、Rubric 可比性、dimension delta、Weakness 状态、脱敏/哈希 |
-| 仓储/数据库 | 旧数据回填、不可覆盖、幂等键、并发重答、级联删除、跨用户隔离 |
-| API | 未登录/越权、非法父 Attempt、重复提交、版本不一致、模型失败后数据仍保留 |
-| 端到端 | 首答 → 报告 → 重答 → 对比 → 弱点 → 新 Session 复测 |
-| 离线评测 | Retrieval、Decision、Scoring 分模块；真实与合成样本分开报告 |
+| 层级        | 必测内容                                                                |
+| ----------- | ----------------------------------------------------------------------- |
+| 单元        | Attempt 编号、Rubric 可比性、dimension delta、Weakness 状态、脱敏/哈希  |
+| 仓储/数据库 | 旧数据回填、不可覆盖、幂等键、并发重答、级联删除、跨用户隔离            |
+| API         | 未登录/越权、非法父 Attempt、重复提交、版本不一致、模型失败后数据仍保留 |
+| 端到端      | 首答 → 报告 → 重答 → 对比 → 弱点 → 新 Session 复测                      |
+| 离线评测    | Retrieval、Decision、Scoring 分模块；真实与合成样本分开报告             |
 
 ## 当前 Gate
 
@@ -28,6 +28,15 @@
 - 跨 Session：到期任务自动成为相同模块/岗位/难度新 Mock 的第一题；普通选题排除内部复测题。
 - Gate：`typecheck`、`lint`、29/29 DB tests、production build、Promptfoo 4/4 全部通过。
 - 未覆盖：真实用户对“等价性”和训练效果的人工判断；归入 V2-012/013。
+
+## V2-006～012 验证结果（2026-08-17）
+
+- 数据迁移：新增 `MemoryItem`、`InterviewPattern`、摄取审计、`TraceRun/TraceStep`、`BadCase`，并把用户事件改为级联删除；本地 PostgreSQL 共 16 个迁移，状态同步。
+- 面经审计：208 条内部题目全部为 `INTERNAL/APPROVED`，208 条摄取审计为 `ACCEPTED`；来源/岗位/能力标签缺失均为 0，非法发布为 0。
+- 单元/数据库：45/45 通过；覆盖严格 Agent 枚举与低置信度降级、注入、脱敏、成本/超时、面经拒收/判重、双域零召回/超时、Memory 污染/越权/删除、Trace 回放/越权和账户级联。
+- 事件：事件名白名单通过；retry/feedback/plan/retest 使用固定命名。试点导出脚本在当前窗口观测到 0 名参与者，所有比率为 `null`，未生成用户效果结论。
+- Gate：`typecheck`、`lint`、Promptfoo 4/4、Next.js 生产构建全部通过。
+- 未覆盖：真实用户访谈、人工 Gold Query/Judge 校准、等价题迁移效果；分别进入真实试点和 V2-013。
 
 ## P0 退出条件
 

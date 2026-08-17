@@ -31,8 +31,27 @@ export const idempotencyKeySchema = z
   .max(128)
   .regex(/^[A-Za-z0-9._:-]+$/);
 
+const eventPayloadSchema = z
+  .record(z.unknown())
+  .refine((value) => JSON.stringify(value).length <= 4000, "Event payload is too large.");
+
 export const eventSchema = z.object({
-  name: z.string().min(2),
+  name: z.enum([
+    "mock_start",
+    "question_answered",
+    "score_generated",
+    "report_view",
+    "mock_complete",
+    "seven_day_return",
+    "report_feedback_submit",
+    "badcase_report",
+    "score_retry_click",
+    "retry_started",
+    "retry_completed",
+    "feedback_adopted",
+    "plan_created",
+    "retest_completed"
+  ]),
   sessionId: z.string().min(1).optional(),
-  payload: z.record(z.unknown()).optional()
+  payload: eventPayloadSchema.optional()
 });

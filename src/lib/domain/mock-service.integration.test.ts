@@ -7,13 +7,18 @@ test(
   "runs the scored retry and report comparison vertical slice",
   { skip: process.env.RUN_DB_TESTS !== "1" },
   async () => {
-    const [{ prisma }, { retryAnswerAttempt }] = await Promise.all([
+    const [{ prisma }, { retryAnswerAttempt }, { getTraceReplay }] = await Promise.all([
       import("@/lib/repositories/prisma-client"),
-      import("./mock-service")
+      import("./mock-service"),
+      import("@/lib/observability/trace-store")
     ]);
     const suffix = randomUUID();
-    const plan = await prisma.usagePlan.findFirst({ where: { isActive: true } });
-    const rubric = await prisma.rubricVersion.findFirst({ where: { isActive: true } });
+    const plan = await prisma.usagePlan.findFirst({
+      where: { isActive: true }
+    });
+    const rubric = await prisma.rubricVersion.findFirst({
+      where: { isActive: true }
+    });
     assert.ok(plan, "Database fixture needs an active usage plan.");
     assert.ok(rubric, "Database fixture needs an active rubric.");
 
@@ -93,13 +98,9 @@ test(
             },
             { ...actor, id: "another-user-id", email: "other@example.test" }
           ),
-        (error: unknown) =>
-          error instanceof Error && error.message === "Answer attempt not found."
+        (error: unknown) => error instanceof Error && error.message === "Answer attempt not found."
       );
-      assert.equal(
-        await prisma.answer.count({ where: { sessionId: session.id } }),
-        1
-      );
+      assert.equal(await prisma.answer.count({ where: { sessionId: session.id } }), 1);
 
       const result = await retryAnswerAttempt(
         initial.id,
@@ -115,6 +116,27 @@ test(
       assert.equal(result.attempt.parentAnswerId, initial.id);
       assert.equal(result.comparison.rubricVersionId, rubric.id);
       assert.equal(result.report.questionFeedback[0].latestAttemptId, result.attempt.id);
+      const trace = await getTraceReplay(result.runId, actor);
+      assert.ok(trace);
+      assert.equal(trace.status, "COMPLETED");
+      assert.deepEqual(
+        trace.steps.map((step) => step.kind),
+        ["MODEL", "SCORE"]
+      );
+      assert.ok(trace.usage.inputTokens > 0);
+      const eventCounts = await prisma.event.groupBy({
+        by: ["name"],
+        where: {
+          userId: user.id,
+          name: {
+            in: ["retry_started", "retry_completed", "feedback_adopted"]
+          }
+        },
+        _count: true
+      });
+      assert.equal(eventCounts.find((event) => event.name === "retry_started")?._count, 1);
+      assert.equal(eventCounts.find((event) => event.name === "retry_completed")?._count, 1);
+      assert.equal(eventCounts.find((event) => event.name === "feedback_adopted")?._count, 1);
 
       const repeated = await retryAnswerAttempt(
         initial.id,
@@ -125,10 +147,7 @@ test(
         actor
       );
       assert.equal(repeated.attempt.id, result.attempt.id);
-      assert.equal(
-        await prisma.answer.count({ where: { sessionId: session.id } }),
-        2
-      );
+      assert.equal(await prisma.answer.count({ where: { sessionId: session.id } }), 2);
       const unchanged = await prisma.answer.findUniqueOrThrow({
         where: { id: initial.id }
       });

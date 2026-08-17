@@ -3,17 +3,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, Save, Trash2 } from "lucide-react";
-import type { CurrentUser, MockSession } from "@/lib/domain/types";
+import { Brain, Check, FileText, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
+import type { CurrentUser, MemoryItem, MockSession } from "@/lib/domain/types";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 
 type UsageSnapshot = {
@@ -30,6 +24,9 @@ export function AccountPanel() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [usage, setUsage] = useState<UsageSnapshot | null>(null);
   const [sessions, setSessions] = useState<MockSession[]>([]);
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
+  const [memoryType, setMemoryType] = useState<"FACT" | "PREFERENCE">("FACT");
+  const [memoryText, setMemoryText] = useState("");
   const [name, setName] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -51,16 +48,20 @@ export function AccountPanel() {
         return;
       }
 
-      const [mePayload, usageResponse, sessionsResponse] = await Promise.all([
+      const [mePayload, usageResponse, sessionsResponse, memoriesResponse] = await Promise.all([
         meResponse.json() as Promise<{ user: CurrentUser }>,
         fetch("/api/usage/me"),
-        fetch("/api/mock-sessions")
+        fetch("/api/mock-sessions"),
+        fetch("/api/memories", { cache: "no-store" })
       ]);
       const usagePayload = usageResponse.ok
         ? ((await usageResponse.json()) as { usage: UsageSnapshot })
         : null;
       const sessionsPayload = sessionsResponse.ok
         ? ((await sessionsResponse.json()) as { sessions: MockSession[] })
+        : null;
+      const memoriesPayload = memoriesResponse.ok
+        ? ((await memoriesResponse.json()) as { memories: MemoryItem[] })
         : null;
 
       if (!cancelled) {
@@ -69,6 +70,7 @@ export function AccountPanel() {
         setTargetRole(mePayload.user.targetRole ?? "");
         setUsage(usagePayload?.usage ?? null);
         setSessions(sessionsPayload?.sessions ?? []);
+        setMemories(memoriesPayload?.memories ?? []);
         setIsLoading(false);
       }
     }
@@ -151,6 +153,60 @@ export function AccountPanel() {
     router.refresh();
   }
 
+  async function createMemory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!memoryText.trim()) return;
+    setIsSaving(true);
+    const response = await fetch("/api/memories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: memoryType,
+        value: { claim: memoryText.trim() }
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    setIsSaving(false);
+    if (!response.ok) {
+      setError(payload.error ?? "新增 Memory 失败。");
+      return;
+    }
+    setMemories((current) => [payload.memory, ...current]);
+    setMemoryText("");
+  }
+
+  async function mutateMemory(
+    memory: MemoryItem,
+    input: { action: "CONFIRM" | "REJECT" } | { action: "UPDATE"; value: Record<string, unknown> }
+  ) {
+    const response = await fetch(`/api/memories/${memory.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error ?? "更新 Memory 失败。");
+      return;
+    }
+    setMemories((current) =>
+      current.map((item) => (item.id === memory.id ? payload.memory : item))
+    );
+  }
+
+  async function deleteMemory(memory: MemoryItem) {
+    if (!window.confirm("确定删除这条 Memory 吗？")) return;
+    const response = await fetch(`/api/memories/${memory.id}`, {
+      method: "DELETE"
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setError(payload.error ?? "删除 Memory 失败。");
+      return;
+    }
+    setMemories((current) => current.filter((item) => item.id !== memory.id));
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -183,13 +239,14 @@ export function AccountPanel() {
               </label>
               <label className="block space-y-1.5">
                 <span className="text-sm font-medium text-foreground">目标岗位</span>
-                <Input
-                  value={targetRole}
-                  onChange={(event) => setTargetRole(event.target.value)}
-                />
+                <Input value={targetRole} onChange={(event) => setTargetRole(event.target.value)} />
               </label>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                {isSaving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Save className="size-4" />
+                )}
                 保存资料
               </Button>
             </form>
@@ -250,11 +307,7 @@ export function AccountPanel() {
               <Button
                 type="submit"
                 variant="danger"
-                disabled={
-                  isSaving ||
-                  !deletePassword ||
-                  deleteConfirmation !== "DELETE"
-                }
+                disabled={isSaving || !deletePassword || deleteConfirmation !== "DELETE"}
               >
                 <Trash2 className="size-4" />
                 永久删除账户
@@ -279,7 +332,9 @@ export function AccountPanel() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
-                <p className="text-2xl font-bold tabular-nums text-foreground">{usage?.planCode ?? "-"}</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground">
+                  {usage?.planCode ?? "-"}
+                </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">套餐</p>
               </div>
               <div>
@@ -290,7 +345,7 @@ export function AccountPanel() {
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums text-foreground">
-                  {usage?.remaining === null ? "∞" : usage?.remaining ?? 0}
+                  {usage?.remaining === null ? "∞" : (usage?.remaining ?? 0)}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">剩余</p>
               </div>
@@ -298,7 +353,7 @@ export function AccountPanel() {
           </CardContent>
         </Card>
 
-        {(message || error) ? (
+        {message || error ? (
           <p
             className={
               error
@@ -309,6 +364,124 @@ export function AccountPanel() {
             {error ?? message}
           </p>
         ) : null}
+
+        <Card>
+          <CardHeader className="border-b border-black/[0.08]">
+            <div className="flex items-center gap-2">
+              <Brain className="size-5 text-primary" />
+              <CardTitle className="tracking-card-title">结构化 Memory</CardTitle>
+            </div>
+            <CardDescription>
+              确认简历事实，管理偏好，并查看由训练 Workflow 更新的弱点与复测状态。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-6">
+            <form className="flex flex-col gap-2 sm:flex-row" onSubmit={createMemory}>
+              <select
+                value={memoryType}
+                onChange={(event) => setMemoryType(event.target.value as "FACT" | "PREFERENCE")}
+                className="h-10 rounded-button border border-input bg-white px-3 text-sm"
+              >
+                <option value="FACT">已确认事实</option>
+                <option value="PREFERENCE">训练偏好</option>
+              </select>
+              <Input
+                value={memoryText}
+                onChange={(event) => setMemoryText(event.target.value)}
+                placeholder="例如：我主导了指标口径设计 / 我偏好 90 秒回答"
+                maxLength={1000}
+              />
+              <Button type="submit" disabled={isSaving || !memoryText.trim()}>
+                新增
+              </Button>
+            </form>
+
+            {memories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">暂无 Memory。</p>
+            ) : (
+              <div className="space-y-2.5">
+                {memories.map((memory) => (
+                  <div
+                    key={memory.id}
+                    className="rounded-button border border-black/[0.08] bg-secondary/20 p-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            tone={
+                              memory.status === "CONFIRMED"
+                                ? "teal"
+                                : memory.status === "REJECTED"
+                                  ? "slate"
+                                  : "amber"
+                            }
+                          >
+                            {memory.type} · {memory.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            置信度 {Math.round(memory.confidence * 100)}%
+                          </span>
+                        </div>
+                        <p className="mt-2 break-words text-sm text-foreground">
+                          {memoryLabel(memory)}
+                        </p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          来源：{memory.sourceRef} · v{memory.version}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        {memory.status === "PROPOSED" &&
+                        (memory.type === "FACT" || memory.type === "PREFERENCE") ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => mutateMemory(memory, { action: "CONFIRM" })}
+                            >
+                              <Check className="size-3.5" />
+                              确认
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => mutateMemory(memory, { action: "REJECT" })}
+                            >
+                              <X className="size-3.5" />
+                              拒绝
+                            </Button>
+                          </>
+                        ) : null}
+                        {memory.type === "FACT" || memory.type === "PREFERENCE" ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              const value = window.prompt("修改 Memory", memoryLabel(memory));
+                              if (value?.trim()) {
+                                void mutateMemory(memory, {
+                                  action: "UPDATE",
+                                  value: { claim: value.trim() }
+                                });
+                              }
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                            修改
+                          </Button>
+                        ) : null}
+                        <Button size="sm" variant="secondary" onClick={() => deleteMemory(memory)}>
+                          <Trash2 className="size-3.5" />
+                          删除
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="border-b border-black/[0.08]">
@@ -351,4 +524,16 @@ export function AccountPanel() {
       </div>
     </div>
   );
+}
+
+function memoryLabel(memory: MemoryItem) {
+  const claim = memory.value.claim;
+  if (typeof claim === "string") return claim;
+  const title = memory.value.title;
+  if (typeof title === "string") return title;
+  const trainingStatus = memory.value.trainingStatus;
+  if (typeof trainingStatus === "string") {
+    return `${String(memory.value.dimension ?? "训练任务")}：${trainingStatus}`;
+  }
+  return JSON.stringify(memory.value);
 }

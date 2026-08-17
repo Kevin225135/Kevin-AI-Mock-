@@ -138,13 +138,18 @@ function rankCompetency(
     "请说明关键行动、决策依据和最终结果。";
 
   return {
-    prompt: `你的简历提到“${clip(anchor, 110)}”。围绕${competency.label}，${competency.questionFocus}？${difficultyInstruction}`,
-    expectation: `回答应覆盖：${competency.expectedSignals.join("、")}。问题仅依据简历证据生成，不得补写不存在的经历。`,
+    prompt: `你的材料中出现“${clip(anchor, 110)}”。请先确认或纠正这条信息；围绕${competency.label}，${competency.questionFocus}？${difficultyInstruction}`,
+    expectation: `回答应覆盖：${competency.expectedSignals.join("、")}。材料证据在用户确认前仅作提问线索，不得当作已验证事实或补写不存在的经历。`,
     keywords,
     context: {
       competencyId: competency.id,
       competencyLabel: competency.label,
-      evidence: matched.map(({ text, source, matchedKeywords }) => ({ text, source, matchedKeywords })),
+      evidence: matched.map(({ text, source, matchedKeywords }) => ({
+        text,
+        source,
+        matchedKeywords,
+        confirmationStatus: "UNCONFIRMED"
+      })),
       expectedSignals: competency.expectedSignals,
       researchSources: keywordResearchSources
     },
