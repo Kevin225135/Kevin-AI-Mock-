@@ -32,8 +32,8 @@
 | ID     | 状态  | 交付物与验收 |
 | ------ | ----- | ------------ |
 | V2-017 | DONE  | 可复现的 Windows x64 便携版模板、启动/停止脚本、构建脚本与验证记录已纳入版本控制；二进制、数据库、日志、ZIP、密钥和测试者数据保持忽略 |
-| V2-018 | DOING | `npm run dev` 可在未启用 Langfuse 时启动，首页返回 200，OpenTelemetry 依赖不再被错误打包到客户端 |
-| V2-019 | TODO  | 类型、Lint、单元/数据库测试、迁移、冻结集、Hybrid RAG、Promptfoo、生产构建和浏览器主链路全部有本轮证据 |
+| V2-018 | DONE  | Node 专用观测代码按 Next.js instrumentation 约定拆分；未启用 Langfuse 时开发服务 9.3 秒就绪，首页返回 200，不再把 OpenTelemetry/gRPC 打入 Web bundle |
+| V2-019 | DOING | 类型、Lint、单元/数据库测试、迁移、冻结集、Hybrid RAG、Promptfoo、生产构建和浏览器主链路全部有本轮证据 |
 | V2-020 | TODO  | Gitleaks Git/工作区扫描、Trivy/npm 依赖扫描完成；真实秘密为 0，High/Critical 已修复或记录发布例外与适用边界 |
 | V2-021 | TODO  | README 准确说明 V2 用户旅程、Agent/RAG/Memory/Trace、评测、便携运行、隐私边界、限制和发布证据 |
 | V2-022 | TODO  | V2 历史与 `main` 建立可审查关系，推送并合并；GitHub Actions 的 AI Eval 与 Deploy 成功，线上健康检查通过 |
