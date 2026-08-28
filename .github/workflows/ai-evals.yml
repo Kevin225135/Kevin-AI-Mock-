@@ -3,6 +3,7 @@ name: AI regression evals
 on:
   pull_request:
     paths:
+      - ".github/workflows/ai-evals.yml"
       - "src/lib/ai/**"
       - "src/lib/domain/**"
       - "src/lib/evals/**"
@@ -16,6 +17,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/ai-evals.yml"
       - "src/lib/ai/**"
       - "src/lib/domain/**"
       - "src/lib/evals/**"

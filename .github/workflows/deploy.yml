@@ -73,7 +73,7 @@ jobs:
           tar -C release -czf "$RELEASE_ARCHIVE" .
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: production-release
           path: ${{ env.RELEASE_ARCHIVE }}
@@ -100,7 +100,7 @@ jobs:
         run: npm ci
 
       - name: Download release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: production-release
 
@@ -125,31 +125,6 @@ jobs:
 
           exit "$missing"
 
-      - name: Run database migrations
-        shell: bash
-        env:
-          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
-        run: |
-          set -euo pipefail
-
-          printf '%s\n' "$PRODUCTION_ENV" > production.env
-          database_url_line="$(grep -E '^DATABASE_URL=' production.env | tail -n 1 || true)"
-
-          if [ -z "$database_url_line" ]; then
-            echo "::error title=Missing DATABASE_URL::PRODUCTION_ENV must include DATABASE_URL."
-            exit 1
-          fi
-
-          DATABASE_URL="${database_url_line#DATABASE_URL=}"
-          DATABASE_URL="${DATABASE_URL%\"}"
-          DATABASE_URL="${DATABASE_URL#\"}"
-          DATABASE_URL="${DATABASE_URL%\'}"
-          DATABASE_URL="${DATABASE_URL#\'}"
-          export DATABASE_URL
-
-          npm run db:generate
-          npm run db:deploy
-
       - name: Configure SSH
         shell: bash
         env:
@@ -172,6 +147,75 @@ jobs:
             ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
           fi
           chmod 600 ~/.ssh/known_hosts
+
+      - name: Run database migrations through SSH tunnel
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+
+          SSH_PORT="${SSH_PORT:-22}"
+          tunnel_port="54329"
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          database_url_line="$(grep -E '^DATABASE_URL=' production.env | tail -n 1 || true)"
+
+          if [ -z "$database_url_line" ]; then
+            echo "::error title=Missing DATABASE_URL::PRODUCTION_ENV must include DATABASE_URL."
+            exit 1
+          fi
+
+          database_url="${database_url_line#DATABASE_URL=}"
+          database_url="${database_url%\"}"
+          database_url="${database_url#\"}"
+          database_url="${database_url%\'}"
+          database_url="${database_url#\'}"
+
+          mapfile -t db_values < <(
+            DATABASE_URL="$database_url" TUNNEL_PORT="$tunnel_port" node <<'NODE'
+          const url = new URL(process.env.DATABASE_URL);
+          const targetHost = url.hostname;
+          const targetPort = url.port || "5432";
+          url.hostname = "127.0.0.1";
+          url.port = process.env.TUNNEL_PORT;
+          console.log(targetHost);
+          console.log(targetPort);
+          console.log(url.toString());
+          NODE
+          )
+
+          db_host="${db_values[0]}"
+          db_port="${db_values[1]}"
+          DATABASE_URL="${db_values[2]}"
+          export DATABASE_URL
+
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
+            -o ExitOnForwardFailure=yes \
+            -o ServerAliveInterval=15 \
+            -N -L "127.0.0.1:${tunnel_port}:${db_host}:${db_port}" \
+            "$SSH_USER@$SSH_HOST" &
+          tunnel_pid=$!
+          trap 'kill "$tunnel_pid" 2>/dev/null || true' EXIT
+
+          tunnel_ready=0
+          for _ in $(seq 1 20); do
+            if (echo > "/dev/tcp/127.0.0.1/$tunnel_port") 2>/dev/null; then
+              tunnel_ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$tunnel_ready" -ne 1 ]; then
+            echo "::error title=Database tunnel failed::Could not reach the database through the deployment host."
+            exit 1
+          fi
+
+          npm run db:generate
+          npm run db:deploy
 
       - name: Upload release
         shell: bash
