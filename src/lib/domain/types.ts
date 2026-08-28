@@ -1,17 +1,8 @@
-export type InterviewModule =
-  | "BEHAVIORAL"
-  | "CV_RELATED"
-  | "TECHNICAL"
-  | "MARKET";
+export type InterviewModule = "BEHAVIORAL" | "CV_RELATED" | "TECHNICAL" | "MARKET";
 
 export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
-export type SessionStatus =
-  | "CREATED"
-  | "IN_PROGRESS"
-  | "SCORING"
-  | "COMPLETED"
-  | "FAILED";
+export type SessionStatus = "CREATED" | "IN_PROGRESS" | "SCORING" | "COMPLETED" | "FAILED";
 
 export type UserRole = "USER" | "ADMIN";
 
@@ -33,6 +24,41 @@ export type ScoreDimension =
   | "contentDepth"
   | "communication";
 
+export type WeaknessDimension =
+  | "STAR_COMPLETENESS"
+  | "LOGIC_STRUCTURE"
+  | "CONTENT_DEPTH"
+  | "COMMUNICATION";
+
+export type WeaknessSeverity = "LOW" | "MEDIUM" | "HIGH";
+
+export type WeaknessStatus =
+  | "PROPOSED"
+  | "CONFIRMED"
+  | "IGNORED"
+  | "NOT_IMPROVED"
+  | "IMPROVING"
+  | "PASSED";
+
+export type TrainingTaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export type MemoryItemType = "FACT" | "PREFERENCE" | "WEAKNESS" | "TRAINING_STATE" | "TEMPORARY";
+
+export type MemoryItemStatus = "PROPOSED" | "CONFIRMED" | "REJECTED";
+
+export type MemoryItem = {
+  id: string;
+  type: MemoryItemType;
+  status: MemoryItemStatus;
+  value: Record<string, unknown>;
+  sourceRef: string;
+  confidence: number;
+  expiresAt?: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DimensionScores = Record<ScoreDimension, number>;
 
 export type Question = {
@@ -43,13 +69,19 @@ export type Question = {
   prompt: string;
   expectation?: string;
   keywords?: string[];
+  rubricVersionId?: string;
   retrievalContext?: RagQuestionContext;
 };
 
 export type RagQuestionContext = {
   competencyId: string;
   competencyLabel: string;
-  evidence: Array<{ text: string; source: string; matchedKeywords: string[] }>;
+  evidence: Array<{
+    text: string;
+    source: string;
+    matchedKeywords: string[];
+    confirmationStatus?: "UNCONFIRMED";
+  }>;
   expectedSignals: string[];
   researchSources: string[];
   knowledgeEvidence?: Array<{
@@ -59,6 +91,24 @@ export type RagQuestionContext = {
     sourceUrl: string;
     score: number;
   }>;
+  interviewPatternEvidence?: Array<{
+    id: string;
+    question: string;
+    sourceTitle: string;
+    sourceUrl?: string;
+    rightsStatus: string;
+    score: number;
+  }>;
+  candidateMemoryEvidence?: Array<{
+    id: string;
+    sourceRef: string;
+    claim: string;
+    confidence: number;
+    score: number;
+    confirmationStatus: "CONFIRMED";
+  }>;
+  retrievalTraceId?: string;
+  degradationReasons?: string[];
   webEvidence?: Array<{
     title: string;
     url: string;
@@ -85,6 +135,7 @@ export type ResumeProfile = {
   projects: ResumeProject[];
   education: string[];
   createdAt: string;
+  retentionExpiresAt?: string;
 };
 
 export type AnswerRecord = {
@@ -93,6 +144,9 @@ export type AnswerRecord = {
   questionId: string;
   content: string;
   followUpRound: number;
+  attemptNo: number;
+  attemptKind: "INITIAL" | "RETRY" | "RETEST";
+  parentAnswerId?: string;
   submittedAt: string;
 };
 
@@ -100,6 +154,7 @@ export type AiScore = {
   id: string;
   sessionId: string;
   answerId: string;
+  rubricVersionId?: string;
   dimensions: DimensionScores;
   totalScore: number;
   deductions: string[];
@@ -112,6 +167,11 @@ export type AiScore = {
 
 export type ReportQuestionFeedback = {
   questionId: string;
+  initialAttemptId: string;
+  latestAttemptId: string;
+  attemptNo: number;
+  attemptCount: number;
+  rubricVersionId?: string;
   prompt: string;
   answer: string;
   totalScore: number;
@@ -130,6 +190,40 @@ export type Report = {
   questionFeedback: ReportQuestionFeedback[];
   nextPracticePlan: string[];
   createdAt: string;
+};
+
+export type TrainingTask = {
+  id: string;
+  weaknessId: string;
+  status: TrainingTaskStatus;
+  dueAt: string;
+  sourceQuestionId: string;
+  equivalentQuestion: Question;
+  retestSessionId?: string;
+  retestAnswerId?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Weakness = {
+  id: string;
+  sessionId: string;
+  sourceAnswerId: string;
+  dimension: WeaknessDimension;
+  title: string;
+  evidenceRef: string;
+  evidenceSummary: string;
+  severity: WeaknessSeverity;
+  status: WeaknessStatus;
+  baselineScore: number;
+  latestScore?: number;
+  dueAt?: string;
+  confirmedAt?: string;
+  ignoredAt?: string;
+  latestTrainingTask?: TrainingTask;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type MockSession = {
@@ -159,6 +253,7 @@ export type CreateSessionInput = {
   difficulty: Difficulty;
   questionCount: number;
   resumeId?: string;
+  trainingTaskId?: string;
 };
 
 export type SubmitAnswerInput = {
@@ -166,6 +261,31 @@ export type SubmitAnswerInput = {
   content: string;
   transcript?: string;
   sttStatus?: "COMPLETED" | "FAILED" | "NOT_USED";
+};
+
+export type RetryAnswerInput = Omit<SubmitAnswerInput, "questionId"> & {
+  idempotencyKey: string;
+};
+
+export type DimensionDelta = {
+  dimension: ScoreDimension;
+  before: number;
+  after: number;
+  delta: number;
+};
+
+export type AttemptComparison = {
+  sourceAttempt: AnswerRecord;
+  retryAttempt: AnswerRecord;
+  rubricVersionId: string;
+  beforeTotal: number;
+  afterTotal: number;
+  totalDelta: number;
+  dimensionDeltas: DimensionDelta[];
+  improvedDimensions: ScoreDimension[];
+  adoptedActions: string[];
+  unverifiedActions: string[];
+  remainingActions: string[];
 };
 
 export type AnalyticsEventInput = {

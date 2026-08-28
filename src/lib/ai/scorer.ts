@@ -1,6 +1,7 @@
 import { buildScoringPrompt } from "./prompt";
 import { parseAiScore, type AiScoreResult } from "./score-schema";
 import type { Question } from "@/lib/domain/types";
+import { getModuleRubric } from "./module-rubric";
 
 type ScoreAnswerInput = {
   question: Question;
@@ -31,16 +32,29 @@ const communicationPenaltySignals = [
   /stuff|things|something|whatever|很多很多|大概就是|反正/i
 ];
 
+const marketReasoningSignals = [
+  /观点|判断|结论|view|thesis|position/i,
+  /依据|证据|传导|机制|driver|evidence|mechanism/i,
+  /反方|反例|相反|但是|但|counter|however|downside/i,
+  /失效|阈值|条件|若|如果|invalidate|unless|condition/i
+];
+
 const DEFAULT_PROVIDER_TIMEOUT_MS = 15000;
 
-export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResult> {
+export async function scoreAnswer(
+  input: ScoreAnswerInput,
+  options: {
+    forceLocal?: boolean;
+    onFallback?: (reason: string) => void;
+  } = {}
+): Promise<AiScoreResult> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const raw =
-        process.env.AI_PROVIDER && process.env.AI_PROVIDER !== "local"
-          ? await scoreWithProvider(input)
+        !options.forceLocal && process.env.AI_PROVIDER && process.env.AI_PROVIDER !== "local"
+          ? await scoreWithProvider(input, options.onFallback)
           : scoreWithLocalRubric(input);
 
       return parseAiScore(raw);
@@ -52,21 +66,26 @@ export async function scoreAnswer(input: ScoreAnswerInput): Promise<AiScoreResul
   throw lastError;
 }
 
-async function scoreWithProvider(input: ScoreAnswerInput) {
+async function scoreWithProvider(input: ScoreAnswerInput, onFallback?: (reason: string) => void) {
   try {
     if (process.env.AI_PROVIDER === "ark") {
-      return await scoreWithArkResponses(input);
+      return await scoreWithArkResponses(input, onFallback);
     }
 
-    return await scoreWithOpenAiCompatible(input);
-  } catch {
+    return await scoreWithOpenAiCompatible(input, onFallback);
+  } catch (error) {
+    onFallback?.(isTimeoutError(error) ? "PROVIDER_TIMEOUT" : "PROVIDER_ERROR");
     return scoreWithLocalRubric(input);
   }
 }
 
-async function scoreWithArkResponses(input: ScoreAnswerInput) {
+async function scoreWithArkResponses(
+  input: ScoreAnswerInput,
+  onFallback?: (reason: string) => void
+) {
   const apiKey = process.env.ARK_API_KEY ?? process.env.AI_API_KEY;
   if (!apiKey) {
+    onFallback?.("PROVIDER_CONFIG_MISSING");
     return scoreWithLocalRubric(input);
   }
 
@@ -101,6 +120,7 @@ async function scoreWithArkResponses(input: ScoreAnswerInput) {
   });
 
   if (!response.ok) {
+    onFallback?.("PROVIDER_HTTP_ERROR");
     return scoreWithLocalRubric(input);
   }
 
@@ -108,14 +128,19 @@ async function scoreWithArkResponses(input: ScoreAnswerInput) {
   const content = extractProviderText(payload);
 
   if (!content) {
+    onFallback?.("PROVIDER_EMPTY_RESPONSE");
     return scoreWithLocalRubric(input);
   }
 
   return parseProviderJson(content);
 }
 
-async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
+async function scoreWithOpenAiCompatible(
+  input: ScoreAnswerInput,
+  onFallback?: (reason: string) => void
+) {
   if (!process.env.AI_API_BASE_URL || !process.env.AI_API_KEY) {
+    onFallback?.("PROVIDER_CONFIG_MISSING");
     return scoreWithLocalRubric(input);
   }
 
@@ -140,6 +165,7 @@ async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
   });
 
   if (!response.ok) {
+    onFallback?.("PROVIDER_HTTP_ERROR");
     return scoreWithLocalRubric(input);
   }
 
@@ -149,6 +175,7 @@ async function scoreWithOpenAiCompatible(input: ScoreAnswerInput) {
   const content = payload.choices?.[0]?.message?.content;
 
   if (!content) {
+    onFallback?.("PROVIDER_EMPTY_RESPONSE");
     return scoreWithLocalRubric(input);
   }
 
@@ -242,6 +269,10 @@ function getProviderTimeoutMs() {
     : DEFAULT_PROVIDER_TIMEOUT_MS;
 }
 
+function isTimeoutError(error: unknown) {
+  return error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError");
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -286,6 +317,13 @@ function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {
     logicStructure = Math.max(logicStructure, 4);
     contentDepth = Math.max(contentDepth, 4);
   }
+  if (input.question.module === "MARKET") {
+    const reasoningCoverage = countMatches(answer, marketReasoningSignals);
+    const reasoningScore = clampScore(1 + reasoningCoverage);
+    starCompleteness = Math.max(starCompleteness, reasoningScore);
+    logicStructure = Math.max(logicStructure, reasoningScore);
+    contentDepth = Math.max(contentDepth, reasoningScore);
+  }
 
   const dimensions = {
     starCompleteness,
@@ -293,11 +331,12 @@ function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {
     contentDepth,
     communication
   };
+  const weights = getModuleRubric(input.question.module).weights;
   const totalScore = Math.round(
-    (starCompleteness * 0.28 +
-      logicStructure * 0.24 +
-      contentDepth * 0.28 +
-      communication * 0.2) *
+    (starCompleteness * weights.starCompleteness +
+      logicStructure * weights.logicStructure +
+      contentDepth * weights.contentDepth +
+      communication * weights.communication) *
       20
   );
 
@@ -305,7 +344,7 @@ function scoreWithLocalRubric(input: ScoreAnswerInput): AiScoreResult {
     dimensions,
     totalScore,
     deductions: buildDeductions(dimensions, input.question.module),
-    improvements: buildImprovements(dimensions),
+    improvements: buildImprovements(dimensions, input.question.module),
     sampleAnswer: buildSampleAnswer(input.question),
     reasoning: buildReasoning(dimensions, totalScore)
   };
@@ -335,7 +374,10 @@ function buildDeductions(
 ) {
   const deductions: string[] = [];
 
-  if (dimensions.starCompleteness < 4) {
+  if (
+    (module === "BEHAVIORAL" || module === "CV_RELATED") &&
+    dimensions.starCompleteness < 4
+  ) {
     deductions.push("STAR 链路不够完整，结果和个人行动需要更明确。");
   }
   if (dimensions.logicStructure < 4) {
@@ -356,10 +398,16 @@ function buildDeductions(
     : ["回答已经覆盖关键点，主要扣分来自例证还可以更具体。"];
 }
 
-function buildImprovements(dimensions: AiScoreResult["dimensions"]) {
+function buildImprovements(
+  dimensions: AiScoreResult["dimensions"],
+  module: Question["module"]
+) {
   const improvements: string[] = [];
 
-  if (dimensions.starCompleteness < 4) {
+  if (
+    (module === "BEHAVIORAL" || module === "CV_RELATED") &&
+    dimensions.starCompleteness < 4
+  ) {
     improvements.push("用 1 句话交代背景和任务，用 2-3 句话讲自己的行动，最后量化结果。");
   }
   if (dimensions.logicStructure < 4) {
@@ -378,6 +426,22 @@ function buildImprovements(dimensions: AiScoreResult["dimensions"]) {
 }
 
 function buildSampleAnswer(question: Question) {
+  if (question.module === "TECHNICAL") {
+    return [
+      "I would start by clarifying the requirements, constraints, scale, and success metrics.",
+      "Then I would break the problem into components, compare the main alternatives, and select an approach based on reliability, complexity, cost, and operational risk.",
+      "I would call out the most likely failure modes and define observability, rollout, and rollback plans.",
+      "Finally, I would validate the design with representative load, edge cases, and measurable acceptance criteria."
+    ].join(" ");
+  }
+  if (question.module === "MARKET") {
+    return [
+      "My view is based on one clear market mechanism rather than a headline.",
+      "I would identify the relevant demand, financing, valuation, competitive, and regulatory drivers, then explain how they transmit to the companies involved.",
+      "I would compare a base case with an upside and downside scenario.",
+      "I would also state the data or event that would invalidate my conclusion."
+    ].join(" ");
+  }
   return [
     `For this ${question.targetRole} question, I would answer with a clear situation, task, action, and result.`,
     "In my previous project, the key challenge was that the team had limited time and incomplete information.",

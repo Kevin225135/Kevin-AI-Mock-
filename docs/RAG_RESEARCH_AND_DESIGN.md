@@ -15,9 +15,10 @@ Date: 2026-07-28
    Recent ACL work shows that multilingual ESCO alignment improves vacancy-CV
    matching, while LLM extraction is useful for complex mentions but should not
    be the only extraction path.
-4. Retrieval is hybrid. It combines PostgreSQL full-text search with
-   `text-embedding-v4` semantic similarity, reciprocal-rank fusion and a
-   Qwen3 cross-encoder reranker.
+4. Retrieval should be hybrid. pgvector explicitly recommends combining vector
+   similarity with PostgreSQL full-text search and using reciprocal-rank fusion
+   or a reranker. The current V1 implements the lexical/taxonomy layer and keeps
+   an interface that can accept vector scores later.
 5. Question generation and follow-up retrieval are separate queries. The first
    retrieves resume evidence and role competencies; the second retrieves
    evidence gaps from the user's answer.
@@ -75,25 +76,15 @@ Date: 2026-07-28
 - If no taxonomy keyword is found, the system uses the strongest resume evidence
   as a controlled fallback instead of inventing an experience.
 
-## Implemented hybrid retrieval layer
+## Next retrieval layer
 
-1. Knowledge documents and queries use the pinned multilingual
-   `text-embedding-v4` model at 1,024 dimensions.
-2. PostgreSQL GIN full-text results and cosine-similarity results are combined
-   with reciprocal-rank fusion.
-3. The top 60 candidates are reranked with `qwen3-rerank`; provider errors
-   degrade to a deterministic local reranker without blocking an interview.
-4. Results apply source-authority, expiry and freshness signals. Knowledge rows
-   retain publish, expiry and last-verification metadata.
-5. The current PostgreSQL deployment does not expose pgvector. Dense vectors
-   therefore remain in `double precision[]` and cosine ranking runs in the
-   application after database filtering. The provider boundary is ready for an
-   ANN implementation when pgvector becomes available.
-6. Run `npm run knowledge:reindex` after changing the embedding model or
-   dimensions. All document and query vectors must use the same pinned model.
+The interfaces are intentionally ready for a V2 hybrid retriever:
 
-## Required retrieval evaluation
-
-The next quality gate must measure Recall@5, NDCG@5, grounded-question rate,
-cross-user isolation, follow-up relevance, duplicate rate and retrieval P95 on
-a labeled bilingual query set before retrieval weights or models are changed.
+1. Install pgvector in the deployment PostgreSQL instance.
+2. Embed resume evidence and competency definitions with one pinned multilingual
+   embedding model.
+3. Combine lexical rank and cosine rank with reciprocal-rank fusion.
+4. Rerank the top 20 candidates and pass at most 4-6 evidence chunks to the
+   generator.
+5. Evaluate Recall@5, grounded-question rate, cross-user isolation, follow-up
+   relevance, duplicate rate and retrieval P95 before enabling it by default.

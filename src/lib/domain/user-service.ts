@@ -61,6 +61,39 @@ export async function changePassword(
   ]);
 }
 
+export async function deleteOwnAccount(userId: string, password: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    throw new AuthError("Password is incorrect.", 400);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const resumes = await tx.resume.findMany({
+      where: { userId },
+      select: { id: true }
+    });
+    const resumeIds = resumes.map((resume) => resume.id);
+    const generatedQuestions = resumeIds.length
+      ? await tx.questionBank.findMany({
+          where: {
+            OR: resumeIds.flatMap((resumeId) => [
+              { externalId: { startsWith: `resume-${resumeId}-` } },
+              { externalId: { startsWith: `followup-${resumeId}-` } }
+            ])
+          },
+          select: { id: true }
+        })
+      : [];
+
+    await tx.user.delete({ where: { id: userId } });
+    if (generatedQuestions.length) {
+      await tx.questionBank.deleteMany({
+        where: { id: { in: generatedQuestions.map((question) => question.id) } }
+      });
+    }
+  });
+}
+
 export async function listAdminUsers(): Promise<AdminUserRow[]> {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },

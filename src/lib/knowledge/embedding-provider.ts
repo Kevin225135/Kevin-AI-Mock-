@@ -17,18 +17,8 @@ export type EmbeddingResult = {
 };
 
 export async function embedDocuments(texts: string[]): Promise<EmbeddingResult> {
-  if (!texts.length) {
-    return {
-      vectors: [],
-      model: configuredModel(),
-      provider: "dashscope",
-      degraded: false
-    };
-  }
-
-  if (!isRemoteEmbeddingEnabled()) {
-    return localEmbedding(texts);
-  }
+  if (!texts.length) return localEmbedding([]);
+  if (!isRemoteEmbeddingEnabled()) return localEmbedding(texts);
 
   const batchSize = Math.min(
     Math.max(Number(process.env.EMBEDDING_BATCH_SIZE) || DEFAULT_BATCH_SIZE, 1),
@@ -48,7 +38,7 @@ export async function embedDocuments(texts: string[]): Promise<EmbeddingResult> 
     };
   } catch (error) {
     console.warn("[hybrid-rag] embedding provider unavailable; using local fallback", {
-      message: error instanceof Error ? error.message : String(error)
+      message: error instanceof Error ? error.message : "EMBEDDING_PROVIDER_ERROR"
     });
     return localEmbedding(texts);
   }
@@ -59,7 +49,7 @@ export async function embedQuery(text: string): Promise<EmbeddingResult> {
 }
 
 export function isRemoteEmbeddingEnabled() {
-  return process.env.EMBEDDING_PROVIDER !== "local" &&
+  return process.env.EMBEDDING_PROVIDER === "dashscope" &&
     Boolean(process.env.EMBEDDING_API_KEY || process.env.AI_API_KEY);
 }
 
@@ -85,14 +75,9 @@ async function requestEmbeddings(input: string[]) {
       dimensions: configuredDimensions(),
       encoding_format: "float"
     }),
-    signal: AbortSignal.timeout(
-      Number(process.env.EMBEDDING_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS
-    )
+    signal: AbortSignal.timeout(Number(process.env.EMBEDDING_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS)
   });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 300);
-    throw new Error(`Embedding API ${response.status}: ${detail}`);
-  }
+  if (!response.ok) throw new Error(`Embedding API returned HTTP ${response.status}.`);
 
   const payload = await response.json() as {
     data?: Array<{ index?: number; embedding?: number[] }>;
@@ -100,8 +85,7 @@ async function requestEmbeddings(input: string[]) {
   const ordered = [...(payload.data ?? [])].sort(
     (left, right) => (left.index ?? 0) - (right.index ?? 0)
   );
-  if (ordered.length !== input.length ||
-      ordered.some((item) => !Array.isArray(item.embedding))) {
+  if (ordered.length !== input.length || ordered.some((item) => !Array.isArray(item.embedding))) {
     throw new Error("Embedding API returned an invalid vector count.");
   }
   return ordered.map((item) => normalizeVector(item.embedding!));
@@ -118,10 +102,7 @@ function configuredModel() {
 }
 
 function configuredDimensions() {
-  return Math.max(
-    Number(process.env.EMBEDDING_DIMENSIONS) || DEFAULT_DIMENSIONS,
-    64
-  );
+  return Math.max(Number(process.env.EMBEDDING_DIMENSIONS) || DEFAULT_DIMENSIONS, 64);
 }
 
 function truncateEmbeddingInput(value: string) {

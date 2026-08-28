@@ -14,10 +14,15 @@ import {
   Minus,
   Plus,
   ShieldCheck,
+  Trash2,
   Timer
 } from "lucide-react";
 import {
+  DEFAULT_MOCK_QUESTIONS,
   difficultyOptions,
+  MAX_MOCK_QUESTIONS,
+  MAX_QUESTION_BANK_QUESTIONS,
+  MIN_MOCK_QUESTIONS,
   moduleOptions,
   roleOptions
 } from "@/lib/domain/constants";
@@ -116,12 +121,16 @@ export function StartMockForm() {
   const [module, setModule] = useState<InterviewModule>("BEHAVIORAL");
   const [targetRole, setTargetRole] = useState<string>("Product Manager");
   const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
-  const [questionCount, setQuestionCount] = useState(3);
+  const [questionCount, setQuestionCount] = useState(DEFAULT_MOCK_QUESTIONS);
   const [resumes, setResumes] = useState<ResumeProfile[]>([]);
   const [resumeId, setResumeId] = useState<string>("");
+  const [resumePrivacyAccepted, setResumePrivacyAccepted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const questionLimit = resumeId
+    ? MAX_MOCK_QUESTIONS
+    : MAX_QUESTION_BANK_QUESTIONS;
 
   useEffect(() => {
     fetch("/api/resumes")
@@ -130,12 +139,21 @@ export function StartMockForm() {
       .catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    setQuestionCount((current) => Math.min(current, questionLimit));
+  }, [questionLimit]);
+
   async function uploadResume(file?: File) {
     if (!file) return;
+    if (!resumePrivacyAccepted) {
+      setError("请先同意简历数据处理和保留说明。");
+      return;
+    }
     setIsUploading(true);
     setError(null);
     const form = new FormData();
     form.append("file", file);
+    form.append("privacyAccepted", "true");
     const response = await fetch("/api/resumes", { method: "POST", body: form });
     const payload = await response.json();
     setIsUploading(false);
@@ -146,6 +164,27 @@ export function StartMockForm() {
     setResumes((current) => [payload.resume, ...current]);
     setResumeId(payload.resume.id);
     setModule("CV_RELATED");
+  }
+
+  async function deleteResume() {
+    if (!resumeId) return;
+    const selected = resumes.find((resume) => resume.id === resumeId);
+    if (
+      !window.confirm(
+        `确定删除“${selected?.fileName ?? "这份简历"}”吗？关联的简历面试、回答和报告也会永久删除。`
+      )
+    ) {
+      return;
+    }
+    const response = await fetch(`/api/resumes/${resumeId}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error ?? "删除简历失败。");
+      return;
+    }
+    setResumes((current) => current.filter((resume) => resume.id !== resumeId));
+    setResumeId("");
+    setModule("BEHAVIORAL");
   }
 
   async function startMock() {
@@ -309,8 +348,9 @@ export function StartMockForm() {
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => setQuestionCount((value) => Math.max(1, value - 1))}
-                  disabled={questionCount <= 1}
+                  onClick={() => setQuestionCount((value) =>
+                    Math.max(MIN_MOCK_QUESTIONS, value - 1))}
+                  disabled={questionCount <= MIN_MOCK_QUESTIONS}
                   aria-label="减少题量"
                 >
                   <Minus className="size-4" />
@@ -322,13 +362,17 @@ export function StartMockForm() {
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => setQuestionCount((value) => Math.min(4, value + 1))}
-                  disabled={questionCount >= 4}
+                  onClick={() => setQuestionCount((value) =>
+                    Math.min(questionLimit, value + 1))}
+                  disabled={questionCount >= questionLimit}
                   aria-label="增加题量"
                 >
                   <Plus className="size-4" />
                 </Button>
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {resumeId ? "简历面试最多 10 题" : "选择已解析简历后可生成最多 10 题"}
+              </p>
             </div>
           </div>
 
@@ -341,10 +385,22 @@ export function StartMockForm() {
             <input
               type="file"
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-              disabled={isUploading}
+              disabled={isUploading || !resumePrivacyAccepted}
               onChange={(event) => uploadResume(event.target.files?.[0])}
               className="mt-2.5 block w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-primary-hover"
             />
+
+            <label className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={resumePrivacyAccepted}
+                onChange={(event) => setResumePrivacyAccepted(event.target.checked)}
+                className="mt-0.5 size-4 accent-primary"
+              />
+              <span>
+                我同意处理简历提取文本用于出题和评分；原始文件不落盘，提取数据默认最多保留 365 天，可随时删除。
+              </span>
+            </label>
 
             {isUploading ? (
               <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -376,6 +432,19 @@ export function StartMockForm() {
                   </SelectContent>
                 </Select>
               </label>
+            ) : null}
+
+            {resumeId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2 text-destructive hover:bg-destructive/8 hover:text-destructive"
+                onClick={deleteResume}
+              >
+                <Trash2 className="size-4" />
+                删除所选简历及关联训练
+              </Button>
             ) : null}
 
             <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">

@@ -1,5 +1,6 @@
 import type {
   AiScore,
+  AnswerRecord,
   AnalyticsEventInput,
   CreateSessionInput,
   Difficulty,
@@ -7,6 +8,7 @@ import type {
   MockSession,
   Question,
   Report,
+  RetryAnswerInput,
   SessionStatus,
   SubmitAnswerInput
 } from "@/lib/domain/types";
@@ -25,6 +27,13 @@ export type SessionPatch = Partial<{
   followUpRound: number;
 }>;
 
+export type AnswerAttemptContext = {
+  answer: AnswerRecord;
+  question: Question;
+  session: MockSession;
+  score?: AiScore;
+};
+
 export interface AppDataStore {
   listQuestions(filter: QuestionFilter): Promise<Question[]>;
   createSession(
@@ -37,10 +46,16 @@ export interface AppDataStore {
     sessionId: string,
     input: SubmitAnswerInput
   ): Promise<MockSession>;
+  getAnswerContext(answerId: string): Promise<AnswerAttemptContext | null>;
+  createRetryAttempt(
+    sourceAnswerId: string,
+    input: RetryAnswerInput
+  ): Promise<AnswerRecord>;
   saveScore(
     sessionId: string,
     answerId: string,
-    result: AiScoreResult
+    result: AiScoreResult,
+    rubricVersionId?: string
   ): Promise<AiScore>;
   updateSession(
     sessionId: string,

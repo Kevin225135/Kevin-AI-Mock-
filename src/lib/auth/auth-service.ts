@@ -33,6 +33,7 @@ export async function registerUser(input: {
   password: string;
   name?: string;
   targetRole?: string;
+  privacyAccepted: true;
   meta?: AuthMeta;
 }) {
   await ensureDefaultUsagePlans();
@@ -47,7 +48,8 @@ export async function registerUser(input: {
         passwordHash,
         name: input.name,
         targetRole: input.targetRole,
-        planCode: defaultPlan
+        planCode: defaultPlan,
+        privacyAcceptedAt: new Date()
       }
     });
 

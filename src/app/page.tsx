@@ -4,16 +4,16 @@ import { StartMockForm } from "@/components/start-mock-form";
 export default function HomePage() {
   return (
     <AppShell>
-      {/* Mentor hero: warm, reassuring and focused. */}
+      {/* ── Hero: glassmorphism deep-violet gradient with light blobs ── */}
       <section className="hero-glass relative overflow-hidden">
         {/* decorative blobs */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-coral opacity-20 blur-3xl"
+          className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-[#7F77DD] opacity-30 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-28 left-1/4 size-64 rounded-full bg-brass opacity-15 blur-3xl"
+          className="pointer-events-none absolute -bottom-28 left-1/4 size-64 rounded-full bg-[#378ADD] opacity-25 blur-3xl"
         />
 
         <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-16 sm:px-6 sm:pb-16 sm:pt-20 lg:px-8">
@@ -21,7 +21,7 @@ export default function HomePage() {
             <span className="inline-flex items-center rounded-pill border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold tracking-badge text-white/90 backdrop-blur">
               AI 驱动 · 透明评分
             </span>
-            <h1 className="mentor-display mt-5 text-4xl font-semibold leading-[1.08] tracking-heading text-white sm:text-[3rem]">
+            <h1 className="mt-5 text-3xl font-bold leading-[1.12] tracking-heading text-white sm:text-[2.6rem]">
               用结构化反馈
               <br />
               打磨每一场面试

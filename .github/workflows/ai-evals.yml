@@ -1,0 +1,45 @@
+name: AI regression evals
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/ai/**"
+      - "src/lib/domain/**"
+      - "src/lib/evals/**"
+      - "src/lib/knowledge/**"
+      - "scripts/run-evals.ts"
+      - "scripts/run-retrieval-evals.ts"
+      - "scripts/verify-eval-dataset.ts"
+      - "evals/**"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/ai/**"
+      - "src/lib/domain/**"
+      - "src/lib/evals/**"
+      - "src/lib/knowledge/**"
+      - "scripts/run-evals.ts"
+      - "scripts/run-retrieval-evals.ts"
+      - "scripts/verify-eval-dataset.ts"
+      - "evals/**"
+
+jobs:
+  deterministic-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AI_PROVIDER: local
+      EMBEDDING_PROVIDER: local
+      RERANK_ENABLED: "false"
+      PROMPTFOO_PASS_RATE_THRESHOLD: "100"
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run eval:ci

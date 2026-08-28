@@ -50,23 +50,23 @@ export function KnowledgeLibrary() {
 
   return (
     <div className="space-y-6">
-      <section className="hero-glass overflow-hidden rounded-[28px] px-6 py-10 text-white shadow-xl sm:px-10">
+      <section className="overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#17152b,#3e368a)] px-6 py-10 text-white shadow-xl sm:px-10">
         <div className="flex items-center gap-2 text-sm text-white/70">
           <Sparkles className="size-4" /> 5 轮 Deep Research · Bilingual
         </div>
-        <h2 className="mentor-display mt-3 text-4xl font-semibold tracking-tight">RAG 知识库 <span className="text-white/55">Knowledge Base</span></h2>
+        <h2 className="mt-3 text-3xl font-bold">RAG 知识库 <span className="text-white/55">Knowledge Base</span></h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
           实时浏览问题生成与追问所使用的专业知识。每条内容均保留研究来源，并支持中英文混合检索。
         </p>
-        <label className="mt-7 flex max-w-2xl items-center gap-3 rounded-2xl bg-card px-4 py-3 text-foreground shadow-lg">
-          <Search className="size-5 text-primary" />
+        <label className="mt-7 flex max-w-2xl items-center gap-3 rounded-2xl bg-white px-4 py-3 text-slate-900 shadow-lg">
+          <Search className="size-5 text-violet-500" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none"
             placeholder="搜索 DCF、现金流、幻觉、AI evals…"
           />
-          {loading ? <span className="text-xs text-muted-foreground">检索中</span> : null}
+          {loading ? <span className="text-xs text-slate-400">检索中</span> : null}
         </label>
       </section>
 
@@ -100,10 +100,10 @@ export function KnowledgeLibrary() {
           <article key={entry.id} className="group rounded-3xl border bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg">
             <div className="flex items-start justify-between gap-3">
               <div className="flex gap-2 text-xs">
-                <span className="rounded-full bg-accent px-2.5 py-1 font-medium text-accent-foreground">{entry.category}</span>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">Research R{entry.researchRound}</span>
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 font-medium text-violet-700">{entry.category}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Research R{entry.researchRound}</span>
               </div>
-              {query.trim() ? <span className="text-xs font-semibold text-teal">{Math.round(entry.score * 100)}% match</span> : null}
+              {query.trim() ? <span className="text-xs font-semibold text-emerald-600">{Math.round(entry.score * 100)}% match</span> : null}
             </div>
             <div className="mt-5 flex gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><BookOpen className="size-5" /></div>
@@ -112,12 +112,12 @@ export function KnowledgeLibrary() {
                 <p className="text-sm font-medium text-muted-foreground">{entry.titleEn}</p>
               </div>
             </div>
-            <div className="mt-4 grid gap-3 border-l-2 border-primary/15 pl-4 text-sm leading-6 text-muted-foreground">
+            <div className="mt-4 grid gap-3 border-l-2 border-primary/15 pl-4 text-sm leading-6 text-slate-600">
               <p>{entry.summaryZh}</p>
-              <p className="text-muted-foreground/80">{entry.summaryEn}</p>
+              <p className="text-slate-500">{entry.summaryEn}</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {entry.keywords.slice(0, 5).map((keyword) => <span key={keyword} className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">#{keyword}</span>)}
+              {entry.keywords.slice(0, 5).map((keyword) => <span key={keyword} className="rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-500">#{keyword}</span>)}
             </div>
             {entry.sourceUrl.startsWith("http") ? (
               <a href={entry.sourceUrl} target="_blank" rel="noreferrer"

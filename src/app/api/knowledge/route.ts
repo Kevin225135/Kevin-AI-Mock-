@@ -18,6 +18,13 @@ export async function GET(request: NextRequest) {
     entries,
     total,
     returned: entries.length,
-    retrieval: query ? "hybrid-vector-keyword" : "browse"
+    retrieval: query ? "hybrid-rrf-rerank" : "browse",
+    degraded: query ? entries.some((entry) => entry.degraded) : false,
+    providers: query
+      ? {
+          embedding: [...new Set(entries.map((entry) => entry.embeddingProvider))],
+          rerank: [...new Set(entries.map((entry) => entry.rerankProvider))]
+        }
+      : null
   });
 }

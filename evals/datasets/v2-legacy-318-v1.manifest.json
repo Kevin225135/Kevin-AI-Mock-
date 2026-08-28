@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "name": "ai-mock-v2-legacy",
+  "version": "1.0.0",
+  "status": "FROZEN",
+  "frozenAt": "2026-08-17T04:44:14.399Z",
+  "rubric": {
+    "code": "v1_text_mock_rubric",
+    "version": 2
+  },
+  "sampleCount": 318,
+  "contentHash": "d89cbd566f4ea8e55449d4c6cb15698197081ffca0567e981e2cf709855f6bc1",
+  "labelPolicy": "referenceScore is a legacy regression target; only DOUBLE_BLIND_COMPLETE or ARBITRATED annotations are human Gold",
+  "quality": {
+    "duplicateContentRows": 96,
+    "crossSplitDuplicateGroups": 0,
+    "humanGoldRows": 0
+  },
+  "counts": {
+    "bySplit": {
+      "TRAIN": 219,
+      "VALIDATION": 49,
+      "TEST": 50
+    },
+    "byCategory": {
+      "BASIC": 148,
+      "BADCASE": 10,
+      "FOLLOW_UP": 80,
+      "BOUNDARY": 50,
+      "SAFETY": 30
+    },
+    "byModule": {
+      "BEHAVIORAL": 89,
+      "MARKET": 76,
+      "CV_RELATED": 77,
+      "TECHNICAL": 76
+    },
+    "bySourceType": {
+      "LEGACY_SYNTHETIC": 314,
+      "LEGACY_CURATED_REFERENCE": 4
+    },
+    "byLabelStatus": {
+      "REFERENCE_ONLY": 318
+    },
+    "bySplitCategory": {
+      "TRAIN:BASIC": 103,
+      "VALIDATION:BASIC": 22,
+      "TEST:BADCASE": 2,
+      "TRAIN:FOLLOW_UP": 56,
+      "TRAIN:BOUNDARY": 34,
+      "VALIDATION:FOLLOW_UP": 12,
+      "TRAIN:SAFETY": 21,
+      "VALIDATION:BADCASE": 3,
+      "TEST:BASIC": 23,
+      "TEST:BOUNDARY": 8,
+      "TEST:FOLLOW_UP": 12,
+      "VALIDATION:SAFETY": 4,
+      "VALIDATION:BOUNDARY": 8,
+      "TRAIN:BADCASE": 5,
+      "TEST:SAFETY": 5
+    }
+  }
+}

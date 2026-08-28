@@ -7,3 +7,20 @@ coverage
 .env*.local
 *.log
 prisma/dev.db
+.workbuddy/
+.impeccable.md
+.promptfoo/
+promptfoo-output/
+.playwright-cli/
+*.traineddata
+
+# Portable release outputs and tester-local state. Keep only the templates and
+# build scripts under portable/ in version control.
+AI-Mock-Portable-*.zip
+portable/app/
+portable/database/
+portable/logs/
+portable/run/
+portable/runtime/
+portable/portable.env
+portable/optional-model.env

@@ -1,6 +1,6 @@
 {
   "name": "ai-mock-interview-coach",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,14 +15,25 @@
     "db:setup": "prisma migrate deploy && tsx prisma/seed.ts",
     "test": "node --test --import tsx \"src/**/*.test.ts\"",
     "worker:score": "tsx src/workers/scoring-worker.ts",
-    "eval:run": "tsx --env-file=.env.local scripts/run-evals.ts",
+    "eval:run": "tsx scripts/run-evals.ts",
     "eval:seed": "tsx --env-file=.env.local scripts/seed-evals.ts",
     "eval:annotate": "tsx --env-file=.env.local scripts/annotate-eval.ts",
+    "eval:dataset:export": "tsx --env-file=.env.local scripts/export-eval-dataset.ts",
+    "eval:dataset:verify": "tsx scripts/verify-eval-dataset.ts",
+    "eval:retrieval": "tsx scripts/run-retrieval-evals.ts",
+    "eval:promptfoo": "npx --yes promptfoo@0.122.0 eval -c evals/promptfoo/promptfooconfig.yaml --no-cache",
+    "eval:ci": "npm run eval:dataset:verify && npm run eval:run && npm run eval:retrieval && npm run eval:promptfoo",
     "knowledge:seed": "tsx --env-file=.env.local scripts/seed-knowledge.ts",
-    "knowledge:reindex": "tsx --env-file=.env.local scripts/seed-knowledge.ts",
+    "patterns:audit": "tsx --env-file=.env.local scripts/audit-interview-patterns.ts",
+    "patterns:import": "tsx --env-file=.env.local scripts/import-interview-patterns.ts",
+    "pilot:export": "tsx --env-file=.env.local scripts/export-v2-pilot-events.ts",
+    "privacy:purge": "tsx --env-file=.env.local scripts/purge-expired-resumes.ts",
     "ai:check": "tsx --env-file=.env.local scripts/check-ai-provider.ts"
   },
   "dependencies": {
+    "@langfuse/otel": "^5.10.0",
+    "@langfuse/tracing": "^5.10.0",
+    "@opentelemetry/sdk-node": "^0.221.0",
     "@prisma/client": "^6.8.0",
     "@radix-ui/react-progress": "^1.1.10",
     "@radix-ui/react-select": "^2.3.1",
@@ -34,25 +45,26 @@
     "ioredis": "^5.6.1",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.0",
-    "next": "^15.3.0",
+    "next": "15.5.24",
     "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "0.35.4",
     "tailwind-merge": "^2.5.4",
     "tesseract.js": "^7.0.0",
     "word-extractor": "^1.0.4",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "^15.3.0",
+    "@next/eslint-plugin-next": "15.5.24",
     "@types/node": "^22.15.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.25.0",
-    "eslint-config-next": "^15.5.19",
+    "eslint-config-next": "15.5.24",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "postcss": "^8.5.0",
+    "postcss": "8.5.26",
     "prettier": "^3.5.0",
     "prisma": "^6.8.0",
     "tailwindcss": "^3.4.17",
@@ -60,5 +72,11 @@
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.31.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0",
+    "next": {
+      "postcss": "8.5.26"
+    }
   }
 }

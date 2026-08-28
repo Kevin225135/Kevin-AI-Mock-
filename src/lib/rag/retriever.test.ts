@@ -20,6 +20,25 @@ test("retrieves role-specific resume questions with evidence", () => {
   assert.ok(result.selected.some((item) => item.context.competencyId === "swe-system-quality"));
 });
 
+test("generates ten distinct resume questions across multiple interview angles", () => {
+  const result = retrieveResumeQuestions({
+    resume: {
+      rawText: "负责消息系统 API 和数据库架构，将 P95 延迟从 900ms 降低到 220ms。",
+      companies: ["Example Technology"],
+      roles: ["Software Engineer"],
+      skills: ["API", "database"],
+      projects: [{ name: "消息系统", description: "设计 API 架构并优化延迟", technologies: ["API"] }]
+    },
+    targetRole: "Software Engineer",
+    difficulty: "HARD",
+    limit: 10
+  });
+  assert.equal(result.selected.length, 10);
+  assert.equal(new Set(result.selected.map((item) => item.prompt)).size, 10);
+  assert.ok(new Set(result.selected.map((item) => item.context.competencyId)).size >= 4);
+  assert.ok(result.selected.every((item) => item.context.evidence.length > 0));
+});
+
 test("answer retrieval asks for a missing validation method", () => {
   const analysis = analyzeAnswerGaps({
     answer: "我负责设计缓存方案并推动上线，最终接口延迟降低了 40%。",

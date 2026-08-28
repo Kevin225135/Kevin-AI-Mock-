@@ -8,15 +8,22 @@ import type {
 
 export function buildReport(session: MockSession): Omit<Report, "id" | "createdAt"> {
   const feedback: ReportQuestionFeedback[] = session.questions.map((question) => {
-    const answer = session.answers.find(
-      (candidate) => candidate.questionId === question.id
-    );
+    const attempts = session.answers
+      .filter((candidate) => candidate.questionId === question.id)
+      .sort((a, b) => a.attemptNo - b.attemptNo);
+    const initialAnswer = attempts[0];
+    const answer = attempts.at(-1);
     const score = answer
       ? session.scores.find((candidate) => candidate.answerId === answer.id)
       : undefined;
 
     return {
       questionId: question.id,
+      initialAttemptId: initialAnswer?.id ?? "",
+      latestAttemptId: answer?.id ?? "",
+      attemptNo: answer?.attemptNo ?? 0,
+      attemptCount: attempts.length,
+      rubricVersionId: score?.rubricVersionId,
       prompt: question.prompt,
       answer: answer?.content ?? "",
       totalScore: score?.totalScore ?? 0,
@@ -45,7 +52,7 @@ export function buildReport(session: MockSession): Omit<Report, "id" | "createdA
     averageScore,
     dimensionAverages,
     questionFeedback: feedback,
-    nextPracticePlan: buildPracticePlan(dimensionAverages)
+    nextPracticePlan: buildPracticePlan(dimensionAverages, session.module)
   };
 }
 
@@ -58,11 +65,19 @@ function buildSummary(averageScore: number, dimensions: DimensionScores) {
   return `${band}。当前优势是${dimensionLabels[strongest]}，下一轮优先提升${dimensionLabels[weakest]}。`;
 }
 
-function buildPracticePlan(dimensions: DimensionScores) {
+function buildPracticePlan(
+  dimensions: DimensionScores,
+  module: MockSession["module"]
+) {
   const weakest = findWeakestDimension(dimensions);
+  const completenessPlan =
+    module === "BEHAVIORAL" || module === "CV_RELATED"
+      ? "下一次练习每题先写出背景、任务、个人行动和结果证据，再合并成 90 秒答案。"
+      : module === "TECHNICAL"
+        ? "下一次练习先列出核心概念、假设、方案、风险和验证方法，再组织完整答案。"
+        : "下一次练习用“观点、依据、传导机制、反方因素、失效条件”检查答案完整度。";
   const plans: Record<keyof DimensionScores, string> = {
-    starCompleteness:
-      "下一次练习每题先写出 S/T/A/R 四个短句，再合并成 90 秒答案。",
+    starCompleteness: completenessPlan,
     logicStructure:
       "下一次练习强制使用“结论 -> 依据 -> 行动 -> 结果”的四段结构。",
     contentDepth:

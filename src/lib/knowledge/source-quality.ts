@@ -32,9 +32,10 @@ export function inferSourceAuthority(sourceUrl: string) {
     const hostname = new URL(sourceUrl).hostname.toLowerCase();
     if (HIGH_AUTHORITY_HOSTS.some((host) =>
       hostname === host || hostname.endsWith(`.${host}`))) return 95;
+    if (hostname.endsWith(".gov") || hostname.endsWith(".gov.uk")) return 95;
+    if (hostname.endsWith(".edu") || hostname.endsWith(".edu.cn")) return 85;
     if (MEDIUM_AUTHORITY_HOSTS.some((host) =>
       hostname === host || hostname.endsWith(`.${host}`))) return 80;
-    if (hostname.endsWith(".edu") || hostname.endsWith(".edu.cn")) return 85;
   } catch {
     return 40;
   }
@@ -46,7 +47,7 @@ export function freshnessScore(input: {
   lastVerifiedAt: Date | null;
   now?: Date;
 }) {
-  const reference = input.publishedAt ?? input.lastVerifiedAt;
+  const reference = input.lastVerifiedAt ?? input.publishedAt;
   if (!reference) return 0.5;
   const ageDays = Math.max(
     0,
@@ -58,14 +59,16 @@ export function freshnessScore(input: {
 export function isFresh(input: {
   expiresAt: Date | null;
   publishedAt: Date | null;
+  lastVerifiedAt?: Date | null;
   freshnessDays?: number;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
   if (input.expiresAt && input.expiresAt <= now) return false;
-  if (input.freshnessDays && input.publishedAt) {
-    return input.publishedAt.getTime() >=
-      now.getTime() - input.freshnessDays * 86_400_000;
+  if (input.freshnessDays) {
+    const reference = input.lastVerifiedAt ?? input.publishedAt;
+    if (!reference) return false;
+    return reference.getTime() >= now.getTime() - input.freshnessDays * 86_400_000;
   }
   return true;
 }

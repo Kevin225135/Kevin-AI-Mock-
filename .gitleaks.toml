@@ -1,0 +1,12 @@
+title = "AI Mock secret scanning configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Frozen evaluation sample IDs are deterministic dataset identifiers, not credentials"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+paths = ['''(^|.*/)evals/datasets/v2-legacy-318-v1\.jsonl$''']
+regexes = ['''sampleKey":"legacy-[0-9a-f]{24}"''']

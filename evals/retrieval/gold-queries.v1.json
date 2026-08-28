@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "name": "ai-mock-knowledge-gold",
+  "version": "1.0.0",
+  "description": "Bilingual deterministic Gold Query set for comparing the legacy vector-keyword ranker with Hybrid RAG.",
+  "topK": 5,
+  "gate": {
+    "minimumRecallAt5": 0.95,
+    "minimumNdcgAt5": 0.9,
+    "maximumRecallRegression": 0,
+    "maximumP95LatencyMs": 500
+  },
+  "queries": [
+    {
+      "id": "aipm-eval-design-zh-en",
+      "query": "如何设计 LLM 评测集 rubric golden dataset",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-eval-design"]
+    },
+    {
+      "id": "aipm-grounding",
+      "query": "RAG 幻觉 grounding faithfulness 检索相关性",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-grounding"]
+    },
+    {
+      "id": "aipm-security",
+      "query": "提示注入 prompt injection 数据泄漏 隐私",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-security"]
+    },
+    {
+      "id": "aipm-quality-cost-latency",
+      "query": "模型质量 成本 延迟 quality cost latency tradeoff",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-quality-cost-latency"]
+    },
+    {
+      "id": "aipm-human-loop",
+      "query": "human in the loop 人工审核 escalation",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-human-loop"]
+    },
+    {
+      "id": "aipm-risk-lifecycle",
+      "query": "NIST AI 风险治理 Govern Map Measure Manage",
+      "domain": "AI_PRODUCT_MANAGER",
+      "relevantSlugs": ["aipm-risk-lifecycle"]
+    },
+    {
+      "id": "ib-enterprise-equity-value",
+      "query": "企业价值 股权价值 净债务 EV equity value net debt",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-enterprise-equity-value"]
+    },
+    {
+      "id": "ib-dcf",
+      "query": "DCF discounted cash flow 现金流折现 自由现金流",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-dcf"]
+    },
+    {
+      "id": "ib-wacc",
+      "query": "WACC 加权平均资本成本 cost of equity cost of debt",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-wacc"]
+    },
+    {
+      "id": "ib-terminal-value",
+      "query": "terminal value 终值 永续增长 exit multiple",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-terminal-value"]
+    },
+    {
+      "id": "ib-three-statements",
+      "query": "三大财务报表 working capital cash flow linkage",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-three-statements"]
+    },
+    {
+      "id": "ib-ma",
+      "query": "accretion dilution M&A synergies 先例交易",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-precedents-ma"]
+    },
+    {
+      "id": "ib-capital-markets",
+      "query": "IPO underwriting capital raising 承销 发行",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-capital-markets"]
+    },
+    {
+      "id": "ib-cash-flow-quality",
+      "query": "cash conversion earnings quality 经营现金流 利润质量",
+      "domain": "INVESTMENT_BANKING",
+      "relevantSlugs": ["ib-cash-flow-quality"]
+    }
+  ]
+}

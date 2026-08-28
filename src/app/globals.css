@@ -6,67 +6,70 @@
   :root {
     color-scheme: light;
 
-    /* Mentor: warm, calm and human. */
-    --background: 39 40% 93%;          /* #f4efe5 */
-    --foreground: 154 17% 17%;         /* #25342e */
-    --card: 40 100% 97%;               /* #fffaf0 */
-    --card-foreground: 154 17% 17%;
-    --popover: 40 100% 97%;
-    --popover-foreground: 154 17% 17%;
+    /* ── Neutral Scale (cool-lavender undertone) ── */
+    --background: 250 27% 97.5%;       /* #f5f4fa 浅紫灰 */
+    --foreground: 245 15% 15%;         /* 冷调近黑 */
+    --card: 0 0% 100%;                 /* pure white surface */
+    --card-foreground: 245 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 245 15% 15%;
 
-    /* Deep forest primary */
-    --primary: 160 33% 23%;            /* #284f42 */
+    /* ── Primary: 紫蓝 (Glassmorphism Violet) ── */
+    --primary: 245 42% 50%;            /* #534AB7 */
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 160 31% 30%;      /* #356555 */
+    --primary-hover: 245 47% 37%;      /* #3C3489 — pressed */
 
-    --badge-blue-bg: 28 56% 90%;       /* clay tint */
-    --badge-blue-text: 13 53% 41%;
+    /* ── Glass Badge (pill badges) ── */
+    --badge-blue-bg: 245 60% 96%;      /* #F0EEFB 淡紫 */
+    --badge-blue-text: 245 47% 40%;    /* #4538A0 */
 
-    --secondary: 36 30% 85%;
-    --secondary-foreground: 154 17% 22%;
-    --muted: 36 35% 90%;
-    --muted-foreground: 42 5% 42%;
-    --accent: 18 55% 88%;
-    --accent-foreground: 13 53% 36%;
+    /* ── Neutrals ── */
+    --secondary: 250 20% 94%;
+    --secondary-foreground: 245 15% 22%;
+    --muted: 250 16% 96%;
+    --muted-foreground: 245 8% 42%;
+    --accent: 250 24% 92%;
+    --accent-foreground: 245 15% 18%;
 
-    --hero-dark: 158 35% 17%;
+    /* ── Hero Dark (deep violet) ── */
+    --hero-dark: 249 61% 17%;          /* #1a1145 */
 
     /* ── Module Theme Colors ── */
-    --module-behavioral: 13 58% 55%;
-    --module-behavioral-bg: 22 55% 92%;
-    --module-cv: 160 33% 32%;
-    --module-cv-bg: 145 22% 91%;
-    --module-technical: 178 34% 34%;
-    --module-technical-bg: 170 28% 92%;
-    --module-market: 37 58% 48%;
-    --module-market-bg: 39 58% 91%;
+    --module-behavioral: 245 42% 50%;      /* violet  #534AB7 */
+    --module-behavioral-bg: 245 60% 96%;   /* #EEEDFE */
+    --module-cv: 207 65% 48%;              /* blue    #378ADD */
+    --module-cv-bg: 207 80% 96%;           /* #E6F1FB */
+    --module-technical: 162 68% 37%;       /* teal    #1D9E75 */
+    --module-technical-bg: 162 62% 95%;    /* #E1F5EE */
+    --module-market: 33 85% 55%;           /* amber   #EF9F27 */
+    --module-market-bg: 38 90% 95%;        /* #FAEEDA */
 
     /* ── Semantic ── */
     --destructive: 6 69% 47%;
     --destructive-foreground: 0 0% 100%;
-    --success: 157 32% 35%;
-    --warning: 37 58% 48%;
-    --info: 160 33% 32%;
+    --success: 162 68% 37%;
+    --warning: 33 85% 50%;
+    --info: 207 65% 48%;
 
     /* ── Borders & Inputs ── */
-    --border: 35 25% 80%;
-    --input: 35 23% 77%;
-    --ring: 160 33% 28%;
+    --border: 250 12% 88%;
+    --input: 250 10% 85%;
+    --ring: 245 42% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* ── Accent Tokens ── */
-    --ink: 154 17% 17%;
-    --mist: 36 35% 90%;
-    --coral: 13 61% 56%;
-    --brass: 37 58% 48%;
-    --teal: 157 32% 35%;
-    --blue: 160 33% 32%;
+    --ink: 245 15% 15%;
+    --mist: 250 16% 96%;
+    --coral: 6 69% 47%;
+    --brass: 33 85% 50%;
+    --teal: 162 68% 37%;
+    --blue: 207 65% 48%;
 
     /* ── Radius Scale ── */
-    --radius-button: 12px;
-    --radius-card: 20px;
-    --radius-card-lg: 26px;
+    --radius-button: 8px;
+    --radius-card: 14px;
+    --radius-card-lg: 18px;
     --radius-pill: 9999px;
   }
 
@@ -95,7 +98,7 @@
   }
 
   ::selection {
-    background: hsl(var(--coral) / 0.2);
+    background: hsl(var(--primary) / 0.12);
   }
 
   html {
@@ -127,28 +130,18 @@
 
   /* ── Glassmorphism card (frosted) ── */
   .glass-card {
-    background: hsl(var(--card) / 0.82);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border: 1px solid hsl(var(--border) / 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.65);
   }
 
-  /* Mentor hero: deep forest with warm light. */
+  /* ── Hero dark gradient with light blobs ── */
   .hero-glass {
     background:
-      radial-gradient(closest-side at 82% 18%, hsl(13 61% 56% / 0.24), transparent),
-      radial-gradient(closest-side at 12% 88%, hsl(38 60% 62% / 0.18), transparent),
-      linear-gradient(135deg, hsl(158 35% 15%) 0%, hsl(160 33% 23%) 58%, hsl(153 29% 29%) 100%);
-  }
-
-  .mentor-display {
-    font-family: var(--font-serif), "Songti SC", STSong, Georgia, serif;
-  }
-
-  /* Existing surfaces inherit the selected warm palette without requiring
-     business-component rewrites. */
-  .bg-white {
-    background-color: hsl(var(--card));
+      radial-gradient(closest-side at 82% 18%, hsl(245 52% 60% / 0.35), transparent),
+      radial-gradient(closest-side at 12% 88%, hsl(207 75% 55% / 0.28), transparent),
+      linear-gradient(135deg, hsl(249 61% 17%) 0%, hsl(252 55% 24%) 55%, hsl(230 60% 30%) 100%);
   }
 }
 

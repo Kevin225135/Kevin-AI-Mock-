@@ -23,6 +23,13 @@ export async function GET(request: Request) {
       .filter((event) => event.name === "score_generated")
       .map((event) => Number((event.payload as { totalScore?: unknown } | null)?.totalScore))
       .filter(Number.isFinite);
+    const accuracyFeedback = events
+      .filter((event) => event.name === "report_feedback_submit")
+      .map(
+        (event) =>
+          (event.payload as { scoreAccuracy?: string } | null)?.scoreAccuracy
+      )
+      .filter((value): value is string => Boolean(value));
 
     return NextResponse.json({
       metrics: {
@@ -38,7 +45,12 @@ export async function GET(request: Request) {
         averageScore: scores.length
           ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
           : null,
-        feedbackCount: feedback.length
+        feedbackCount: feedback.length,
+        scoreAccuracy: {
+          accurate: accuracyFeedback.filter((value) => value === "ACCURATE").length,
+          tooHigh: accuracyFeedback.filter((value) => value === "TOO_HIGH").length,
+          tooLow: accuracyFeedback.filter((value) => value === "TOO_LOW").length
+        }
       }
     });
   } catch (error) {

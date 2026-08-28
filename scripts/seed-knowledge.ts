@@ -7,7 +7,12 @@ import { investmentBanking400, roundTwoKnowledge } from "../src/lib/knowledge/ro
 import { summerRecruitKnowledge } from "../src/lib/knowledge/summer-recruit-data";
 
 async function main() {
-  const allEntries = [...knowledgeSeeds, ...investmentBanking400, ...roundTwoKnowledge, ...summerRecruitKnowledge];
+  const allEntries = [
+    ...knowledgeSeeds,
+    ...investmentBanking400,
+    ...roundTwoKnowledge,
+    ...summerRecruitKnowledge
+  ];
   const embeddingResult = await embedDocuments(allEntries.map(buildEmbeddingText));
   const verifiedAt = new Date();
   for (const [index, item] of allEntries.entries()) {
@@ -32,4 +37,9 @@ async function main() {
   );
 }
 
-main().finally(() => prisma.$disconnect());
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect());

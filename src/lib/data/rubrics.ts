@@ -1,15 +1,15 @@
 export const defaultRubricVersion = {
   code: "v1_text_mock_rubric",
-  version: 1,
-  title: "V1 文本 Mock Rubric",
+  version: 2,
+  title: "V2 模块化文本 Mock Rubric",
   dimensions: {
     starCompleteness: {
-      label: "STAR 完整度",
+      label: "回答完整度",
       scale: "1-5",
       anchors: {
-        1: "缺少情境、任务、行动或结果中的多数要素",
-        3: "能覆盖主要经历，但行动和结果仍偏笼统",
-        5: "情境、任务、行动、结果完整，且量化清楚"
+        1: "缺少该题型所需的多数核心要素",
+        3: "覆盖主要要素，但证据、边界或结果仍偏笼统",
+        5: "完整覆盖该题型要求，证据清楚且没有关键缺口"
       }
     },
     logicStructure: {

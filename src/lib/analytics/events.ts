@@ -7,8 +7,12 @@ export const analyticsEvents = {
   sevenDayReturn: "seven_day_return",
   reportFeedbackSubmit: "report_feedback_submit",
   badcaseReport: "badcase_report",
-  scoreRetryClick: "score_retry_click"
+  scoreRetryClick: "score_retry_click",
+  answerRetrySubmitted: "retry_started",
+  answerRetryCompleted: "retry_completed",
+  feedbackAdopted: "feedback_adopted",
+  planCreated: "plan_created",
+  retestCompleted: "retest_completed"
 } as const;
 
-export type AnalyticsEventName =
-  (typeof analyticsEvents)[keyof typeof analyticsEvents];
+export type AnalyticsEventName = (typeof analyticsEvents)[keyof typeof analyticsEvents];

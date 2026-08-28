@@ -27,6 +27,7 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [targetRole, setTargetRole] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,7 +47,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
         ...(isRegister
           ? {
               name: name.trim() || undefined,
-              targetRole: targetRole.trim() || undefined
+              targetRole: targetRole.trim() || undefined,
+              privacyAccepted
             }
           : {})
       })
@@ -120,13 +122,37 @@ export function AuthPanel({ mode }: AuthPanelProps) {
             />
           </label>
 
+          {isRegister ? (
+            <label className="flex items-start gap-2.5 rounded-button border border-black/10 bg-secondary/30 p-3 text-sm leading-relaxed">
+              <input
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(event) => setPrivacyAccepted(event.target.checked)}
+                required
+                className="mt-1 size-4 accent-primary"
+              />
+              <span>
+                {t("我已阅读并同意", "I have read and agree to the")}{" "}
+                <Link className="font-medium text-primary hover:underline" href="/privacy" target="_blank">
+                  {t("隐私与数据说明", "Privacy and data notice")}
+                </Link>
+                {t("，包括面试回答和简历文本的处理方式。", ", including how interview answers and resume text are processed.")}
+              </span>
+            </label>
+          ) : null}
+
           {error ? (
             <p className="rounded-button bg-destructive/8 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           ) : null}
 
-          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={isSubmitting || (isRegister && !privacyAccepted)}
+          >
             {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
             {isRegister ? t("注册并登录", "Create account") : t("登录", "Sign in")}

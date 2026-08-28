@@ -1,5 +1,6 @@
 import type { RagQuestionCandidate } from "./retriever";
 import type { RagQuestionContext } from "@/lib/domain/types";
+import { evaluateRuntimeBudget } from "@/lib/ai/runtime-guard";
 
 export type WebEvidence = {
   title: string;
@@ -19,7 +20,8 @@ export async function refineQuestionsWithLlm(input: {
   candidates: RagQuestionCandidate[];
 }) {
   const prompt = [
-    "你是专业面试问题设计器。只能基于给定的简历证据、私有知识库证据和联网搜索证据生成问题，不得虚构候选人经历。",
+    "你是专业面试问题设计器。只能基于给定的候选人材料、已确认 Memory、私有知识库证据和联网搜索证据生成问题，不得虚构候选人经历。",
+    "resumeEvidence 一律视为 UNCONFIRMED，只能要求候选人确认；只有 confirmedCandidateEvidence 可作为已确认事实。",
     "保持每道问题原本考察能力，但让问题更自然、更专业、更贴近目标岗位。",
     "如使用最新市场事实，必须在问题或预期信号中注明数据日期；证据不足时保留原问题。",
     `目标岗位：${input.targetRole}`,
@@ -30,19 +32,37 @@ export async function refineQuestionsWithLlm(input: {
       expectation: item.expectation,
       competency: item.context.competencyLabel,
       resumeEvidence: item.context.evidence,
-      knowledgeEvidence: item.context.knowledgeEvidence
+      confirmedCandidateEvidence: item.context.candidateMemoryEvidence,
+      knowledgeEvidence: item.context.knowledgeEvidence,
+      interviewPatternEvidence: item.context.interviewPatternEvidence
     })))}`,
     '仅返回JSON：{"questions":[{"index":0,"prompt":"...","expectation":"..."}]}'
   ].join("\n\n");
   const result = await callArkRag(prompt, shouldSearchWeb(input.query));
   if (!result) return { candidates: input.candidates, webEvidence: [] as WebEvidence[] };
-  const refined = input.candidates.map((candidate, index) => {
-    const update = result.json.questions?.find((item) => item.index === index);
-    return update?.prompt
-      ? { ...candidate, prompt: update.prompt, expectation: update.expectation || candidate.expectation }
-      : candidate;
-  });
+  const refined = applyQuestionRefinements(input.candidates, result.json.questions ?? []);
   return { candidates: refined, webEvidence: result.webEvidence };
+}
+
+export function applyQuestionRefinements(
+  candidates: RagQuestionCandidate[],
+  updates: Array<{ index: number; prompt: string; expectation?: string }>
+) {
+  const seenPrompts = new Set<string>();
+  return candidates.map((candidate, index) => {
+    const update = updates.find((item) => item.index === index);
+    const proposed = update?.prompt
+      ? {
+          ...candidate,
+          prompt: update.prompt,
+          expectation: update.expectation || candidate.expectation
+        }
+      : candidate;
+    const proposedKey = normalizeQuestionPrompt(proposed.prompt);
+    const next = seenPrompts.has(proposedKey) ? candidate : proposed;
+    seenPrompts.add(normalizeQuestionPrompt(next.prompt));
+    return next;
+  });
 }
 
 export async function createLlmFollowUp(input: {
@@ -73,6 +93,8 @@ async function callArkRag(prompt: string, useWeb: boolean): Promise<{
   webEvidence: WebEvidence[];
 } | null> {
   const useArk = process.env.AI_PROVIDER === "ark";
+  const budget = evaluateRuntimeBudget({ inputText: prompt });
+  if (!budget.allowed) return null;
   const apiKey = useArk
     ? process.env.ARK_API_KEY ?? process.env.AI_API_KEY
     : process.env.AI_API_KEY ?? process.env.DASHSCOPE_API_KEY;
@@ -139,4 +161,8 @@ function extractWebEvidence(payload: any): WebEvidence[] {
     snippet: "Source returned by the LLM web-search tool.",
     retrievedAt: new Date().toISOString()
   }));
+}
+
+function normalizeQuestionPrompt(value: string) {
+  return value.toLowerCase().normalize("NFKC").replace(/\s+/g, " ").trim();
 }

@@ -14,6 +14,11 @@ type Metrics = {
   averageFeedback: number | null;
   averageScore: number | null;
   feedbackCount: number;
+  scoreAccuracy: {
+    accurate: number;
+    tooHigh: number;
+    tooLow: number;
+  };
 };
 
 export function AnalyticsDashboard() {
@@ -24,6 +29,10 @@ export function AnalyticsDashboard() {
       .then((payload) => setMetrics(payload.metrics ?? null));
   }, []);
   if (!metrics) return <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />加载看板...</div>;
+  const accuracyTotal =
+    metrics.scoreAccuracy.accurate +
+    metrics.scoreAccuracy.tooHigh +
+    metrics.scoreAccuracy.tooLow;
 
   const cards = [
     ["开始场次", metrics.starts, Activity],
@@ -31,7 +40,14 @@ export function AnalyticsDashboard() {
     ["报告查看率", `${metrics.reportViewRate}%`, Eye],
     ["7日回访", metrics.sevenDayReturns, RotateCcw],
     ["平均评分", metrics.averageScore ?? "-", Activity],
-    ["报告有用性", metrics.averageFeedback ? `${metrics.averageFeedback}/5` : "-", MessageSquareHeart]
+    ["报告有用性", metrics.averageFeedback ? `${metrics.averageFeedback}/5` : "-", MessageSquareHeart],
+    [
+      "用户认为评分准确",
+      accuracyTotal
+        ? `${Math.round((metrics.scoreAccuracy.accurate / accuracyTotal) * 100)}%`
+        : "-",
+      MessageSquareHeart
+    ]
   ] as const;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

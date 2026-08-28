@@ -1,6 +1,6 @@
 import type { Question } from "@/lib/domain/types";
 
-export const questionBank: Question[] = [
+const originalQuestionBank: Question[] = [
   {
     id: "beh-ib-001",
     module: "BEHAVIORAL",
@@ -161,4 +161,187 @@ export const questionBank: Question[] = [
     expectation:
       "关注系统性判断、团队协作、质量控制、安全性和长期效率。"
   }
+];
+
+type RoleQuestionBank = Record<
+  Question["targetRole"],
+  Record<Question["module"], string[]>
+>;
+
+const roleQuestionBank: RoleQuestionBank = {
+  "Investment Banking Analyst": {
+    BEHAVIORAL: [
+      "Tell me about a time you found an error in an important deliverable shortly before a deadline.",
+      "Describe a situation where you had to manage competing requests from senior stakeholders.",
+      "Tell me about a time you received difficult feedback and changed how you worked.",
+      "Describe a team situation where you took ownership beyond your formal responsibilities."
+    ],
+    CV_RELATED: [
+      "Which experience on your resume best demonstrates that you can succeed in investment banking, and why?",
+      "Walk me through the most analytically demanding project on your resume.",
+      "Which result on your resume would you defend most carefully under detailed questioning?",
+      "What is the biggest gap between your resume and this role, and how are you closing it?"
+    ],
+    TECHNICAL: [
+      "Walk me from revenue to free cash flow and explain the most important judgment points.",
+      "How would you select comparable companies when no peer is a perfect match?",
+      "Explain how an increase in working capital affects the three financial statements.",
+      "How would you value a company with negative EBITDA but strong revenue growth?"
+    ],
+    MARKET: [
+      "Choose a recent market development and explain its implications for deal activity.",
+      "Which sector currently offers the strongest M&A rationale, and what could invalidate your view?",
+      "How would a change in the yield curve affect valuation and financing conditions?",
+      "Pitch one public company as a potential acquisition target and explain the strategic logic."
+    ]
+  },
+  "Strategy Consultant": {
+    BEHAVIORAL: [
+      "Tell me about a time you brought structure to an ambiguous problem.",
+      "Describe a conflict within a team and how you helped the group reach a decision.",
+      "Tell me about a time your initial hypothesis was wrong and how you adjusted.",
+      "Describe a situation where you influenced a stakeholder without formal authority."
+    ],
+    CV_RELATED: [
+      "Which experience on your resume best demonstrates hypothesis-driven problem solving?",
+      "Walk me through a project where your analysis changed a recommendation.",
+      "Which resume achievement required the most stakeholder management?",
+      "What part of your background gives you a distinctive consulting perspective?"
+    ],
+    TECHNICAL: [
+      "A client's profits are falling despite revenue growth. How would you structure the diagnosis?",
+      "How would you estimate the market size for a new urban mobility service?",
+      "A manufacturer is considering entering a new country. How would you assess the decision?",
+      "How would you determine whether a pricing change created sustainable value?"
+    ],
+    MARKET: [
+      "Choose an industry undergoing structural change and identify where value is moving.",
+      "Which macro trend will matter most to your target clients over the next two years?",
+      "How would you assess whether generative AI is changing an industry's profit pool?",
+      "Pick a recent corporate strategy move and evaluate whether it is likely to succeed."
+    ]
+  },
+  "Product Manager": {
+    BEHAVIORAL: [
+      "Tell me about a time you made a product decision with incomplete data.",
+      "Describe a conflict between user value, business goals, and engineering constraints.",
+      "Tell me about a product failure and what you changed afterward.",
+      "Describe a time you aligned several teams around a difficult priority decision."
+    ],
+    CV_RELATED: [
+      "Which product decision on your resume had the clearest measurable user impact?",
+      "Walk me through a project where you personally changed the product direction.",
+      "Which metric on your resume is most meaningful, and how was it measured?",
+      "What product skill is least visible on your resume, and what evidence supports it?"
+    ],
+    TECHNICAL: [
+      "A product's activation rate dropped after onboarding was redesigned. How would you investigate?",
+      "How would you define a north-star metric for a two-sided marketplace?",
+      "Design an experiment to evaluate an AI-assisted workflow before a broad launch.",
+      "How would you prioritize reliability work against a high-demand customer feature?"
+    ],
+    MARKET: [
+      "Choose a product category where user behavior is changing and explain the opportunity.",
+      "Which AI product trend is overestimated, and which supporting evidence would change your view?",
+      "Evaluate the competitive position of a product you use frequently.",
+      "How would you decide whether a successful domestic product can expand internationally?"
+    ]
+  },
+  "Software Engineer": {
+    BEHAVIORAL: [
+      "Tell me about a time you improved engineering quality without slowing delivery.",
+      "Describe a technical disagreement and how the team reached a decision.",
+      "Tell me about a production incident you helped resolve and what changed afterward.",
+      "Describe a time you mentored a teammate or raised the effectiveness of the team."
+    ],
+    CV_RELATED: [
+      "Which project on your resume best demonstrates your engineering judgment?",
+      "Walk me through the most difficult production issue represented on your resume.",
+      "Which technical claim on your resume would you validate with metrics or code?",
+      "What important engineering tradeoff is hidden behind one of your resume achievements?"
+    ],
+    TECHNICAL: [
+      "Design a notification service that supports retries, ordering, and user preferences.",
+      "How would you diagnose a sudden increase in API tail latency?",
+      "Design data storage for a collaborative document editor.",
+      "How would you migrate a high-traffic service without causing downtime?"
+    ],
+    MARKET: [
+      "Which change in AI-assisted development will have the largest impact on engineering teams?",
+      "How should an engineering organization evaluate build-versus-buy for a core platform?",
+      "Which infrastructure trend is most likely to change software architecture over the next three years?",
+      "How would you assess the technical credibility of a new developer-tool company?"
+    ]
+  }
+};
+
+const difficultyGuidance: Record<Question["difficulty"], {
+  prefix: string;
+  suffix: string;
+}> = {
+  EASY: {
+    prefix: "Give a concise, structured answer. ",
+    suffix: " Focus on the core framework and one concrete example."
+  },
+  MEDIUM: {
+    prefix: "",
+    suffix: " State your assumptions, reasoning, and the evidence you would use."
+  },
+  HARD: {
+    prefix: "",
+    suffix:
+      " Address ambiguity, a meaningful trade-off, a rejected alternative, and how you would validate the outcome."
+  }
+};
+
+const moduleExpectations: Record<Question["module"], string> = {
+  BEHAVIORAL: "使用具体经历说明背景、个人行动、关键取舍、结果和复盘，避免只讲团队行为。",
+  CV_RELATED: "引用简历中的具体事实，明确个人贡献、结果证据以及与目标岗位的关联。",
+  TECHNICAL: "先给出结构化框架，再说明假设、关键判断、风险、替代方案和验证方法。",
+  MARKET: "给出清晰观点、事实依据、传导机制、边界条件和可能推翻结论的信号。"
+};
+
+const roleIds: Record<Question["targetRole"], string> = {
+  "Investment Banking Analyst": "ib",
+  "Strategy Consultant": "consulting",
+  "Product Manager": "pm",
+  "Software Engineer": "swe"
+};
+
+const moduleIds: Record<Question["module"], string> = {
+  BEHAVIORAL: "beh",
+  CV_RELATED: "cv",
+  TECHNICAL: "tech",
+  MARKET: "market"
+};
+
+const difficultyIds: Record<Question["difficulty"], string> = {
+  EASY: "easy",
+  MEDIUM: "medium",
+  HARD: "hard"
+};
+
+const generatedQuestionBank: Question[] = Object.entries(roleQuestionBank).flatMap(
+  ([targetRole, modules]) =>
+    Object.entries(modules).flatMap(([module, prompts]) =>
+      (Object.keys(difficultyGuidance) as Question["difficulty"][]).flatMap(
+        (difficulty) =>
+          prompts.map((prompt, index) => {
+            const guidance = difficultyGuidance[difficulty];
+            return {
+              id: `${moduleIds[module as Question["module"]]}-${roleIds[targetRole]}-${difficultyIds[difficulty]}-${String(index + 1).padStart(2, "0")}`,
+              module: module as Question["module"],
+              targetRole,
+              difficulty,
+              prompt: `${guidance.prefix}${prompt}${guidance.suffix}`,
+              expectation: moduleExpectations[module as Question["module"]]
+            };
+          })
+      )
+    )
+);
+
+export const questionBank: Question[] = [
+  ...originalQuestionBank,
+  ...generatedQuestionBank
 ];

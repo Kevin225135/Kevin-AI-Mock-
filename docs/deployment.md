@@ -50,7 +50,7 @@ chown -R deploy:deploy /var/www/ai-mock-interview-coach
 | --- | --- | --- | --- |
 | `SSH_HOST` | 云服务器控制台里的公网 IP，或已经解析到服务器的域名。 | 在本机执行 `ssh deploy@your.server.host` 能连通；如果用域名，先确认 DNS 已解析到服务器公网 IP。 | `203.0.113.10` 或 `api.example.com` |
 | `SSH_USER` | 服务器上的 Linux 用户名。可以用已有用户，也可以新建 `deploy` 用户。 | SSH 登录后执行 `whoami`，输出就是该值。 | `deploy`、`ubuntu`、`root` |
-| `SSH_PRIVATE_KEY` | 你本地生成的部署 SSH 私钥，不是服务器上下载的文件。 | 私钥对应的公钥已经追加到服务器该用户的 `~/.ssh/authorized_keys`，并且本机能用这把 key 登录。 | 以 `-----BEGIN OPENSSH PRIVATE KEY-----` 开头的完整内容 |
+| `SSH_PRIVATE_KEY` | 你本地生成的部署 SSH 私钥，不是服务器上下载的文件。 | 私钥对应的公钥已经追加到服务器该用户的 `~/.ssh/authorized_keys`，并且本机能用这把 key 登录。 | 包含 OpenSSH 私钥头尾标记的完整内容 |
 | `DEPLOY_PATH` | 你在服务器上规划的应用部署目录。 | 用 `mkdir -p` 创建目录，并用 `chown` 确认 `SSH_USER` 有写权限。 | `/var/www/ai-mock-interview-coach` |
 | `PRODUCTION_ENV` | 生产环境变量集合，来源见下方 `PRODUCTION_ENV` 变量表。 | 按 `.env` 格式逐行填写，不要加 Markdown 代码块。 | `PORT=3000` 等多行内容 |
 | `SSH_PORT` | 服务器 SSH 服务端口。云服务器默认通常是 `22`；如果安全组或 sshd 改过端口，以实际配置为准。 | 本机用 `ssh -p 端口 用户@服务器` 测试。 | `22` |
@@ -229,9 +229,7 @@ cat ~/.ssh/github-actions-ai-mock
 复制完整输出到 GitHub Secret `SSH_PRIVATE_KEY`，必须包含开头和结尾：
 
 ```text
------BEGIN OPENSSH PRIVATE KEY-----
-...
------END OPENSSH PRIVATE KEY-----
+<粘贴部署专用私钥文件的完整内容，包括头尾标记>
 ```
 
 ### 6. 常见问题
@@ -274,5 +272,16 @@ DEPLOY_PATH/
 PM2 会从 `DEPLOY_PATH/current` 启动 `server.js`。工作流默认保留最近 5 个 release。
 
 ## 数据库注意事项
+
+### 简历保留期清理
+
+简历提取数据默认保留 365 天。生产环境需要每天执行一次：
+
+```bash
+npm run privacy:purge
+```
+
+该任务会删除过期简历、关联的简历驱动 Mock、回答、评分、报告和检索轨迹。
+建议使用服务器 cron 或等价的定时任务执行，并将输出接入部署日志。
 
 当前 CI/CD 工作流不会自动执行生产数据库迁移。请先对生产库执行 `npm run db:deploy` 和 `npm run db:seed`，确认 schema 与基础题库数据已写入 PostgreSQL，再切真实流量。

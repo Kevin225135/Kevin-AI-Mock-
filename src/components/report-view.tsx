@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BookOpenText,
+  CalendarCheck,
+  Check,
   ClipboardList,
   Lightbulb,
   Loader2,
@@ -12,14 +14,22 @@ import {
   Star,
   Download,
   Share2,
-  TrendingUp
+  Unlink,
+  TrendingUp,
+  X
 } from "lucide-react";
 import { dimensionLabels, scoreDimensions } from "@/lib/domain/constants";
-import type { Report } from "@/lib/domain/types";
+import type {
+  AttemptComparison,
+  Report,
+  ReportQuestionFeedback,
+  Weakness
+} from "@/lib/domain/types";
 import { AnimatedNumber, FadeIn } from "./ui/motion";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
+import { Textarea } from "./ui/textarea";
 
 type ReportPayload = {
   report: Report;
@@ -44,10 +54,31 @@ export function ReportView({ sessionId }: { sessionId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [scoreAccuracy, setScoreAccuracy] = useState<"TOO_HIGH" | "ACCURATE" | "TOO_LOW" | null>(null);
+  const [mostUseful, setMostUseful] = useState<"SCORES" | "IMPROVEMENTS" | "SAMPLE_ANSWERS" | "PLAN" | null>(null);
   const [feedbackState, setFeedbackState] = useState<"idle" | "saving" | "saved">("idle");
   const [issueComment, setIssueComment] = useState("");
   const [issueSent, setIssueSent] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  const [weaknesses, setWeaknesses] = useState<Weakness[]>([]);
+  const [weaknessError, setWeaknessError] = useState<string | null>(null);
+
+  const loadWeaknesses = useCallback(async () => {
+    const response = await fetch(`/api/reports/${sessionId}/weaknesses`, {
+      cache: "no-store"
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      weaknesses?: Weakness[];
+      error?: string;
+    };
+    if (response.ok && payload.weaknesses) {
+      setWeaknesses(payload.weaknesses);
+      setWeaknessError(null);
+    } else {
+      setWeaknessError(payload.error ?? "训练重点加载失败，请稍后刷新。 ");
+    }
+  }, [sessionId]);
 
   async function submitFeedback() {
     if (!rating) return;
@@ -55,7 +86,12 @@ export function ReportView({ sessionId }: { sessionId: string }) {
     const response = await fetch(`/api/reports/${sessionId}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rating, comment: comment.trim() || undefined })
+      body: JSON.stringify({
+        rating,
+        comment: comment.trim() || undefined,
+        scoreAccuracy: scoreAccuracy ?? undefined,
+        mostUseful: mostUseful ?? undefined
+      })
     });
     setFeedbackState(response.ok ? "saved" : "idle");
   }
@@ -85,6 +121,12 @@ export function ReportView({ sessionId }: { sessionId: string }) {
         setError(payload.error ?? "报告还没有生成。");
       } else {
         setReport(payload.report);
+        await loadWeaknesses();
+        const shareResponse = await fetch(`/api/reports/${sessionId}/share`);
+        if (shareResponse.ok) {
+          const sharePayload = await shareResponse.json();
+          setShareExpiresAt(sharePayload.active ? sharePayload.expiresAt : null);
+        }
       }
       setIsLoading(false);
     }
@@ -94,7 +136,7 @@ export function ReportView({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [router, sessionId]);
+  }, [loadWeaknesses, router, sessionId]);
 
   if (isLoading) {
     return (
@@ -131,7 +173,7 @@ export function ReportView({ sessionId }: { sessionId: string }) {
         <div className="border-b border-black/[0.08] px-6 py-5">
           <div className="grid gap-6 lg:grid-cols-[1fr_14rem] lg:items-center">
             <div>
-              <h2 className="mentor-display text-3xl font-semibold tracking-subheading text-foreground">
+              <h2 className="text-2xl font-semibold tracking-subheading text-foreground">
                 复盘报告
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -222,6 +264,18 @@ export function ReportView({ sessionId }: { sessionId: string }) {
             </div>
 
             <div className="px-5 py-5">
+              <div className="mb-5 rounded-button border border-black/[0.06] bg-secondary/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-muted-foreground">当前回答</p>
+                  <Badge tone="slate">
+                    第 {item.attemptNo} 次 · 共 {item.attemptCount} 次
+                  </Badge>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {item.answer}
+                </p>
+              </div>
+
               {/* Dimension scores */}
               <div className="grid gap-2.5 md:grid-cols-4">
                 {scoreDimensions.map((dimension) => (
@@ -273,11 +327,31 @@ export function ReportView({ sessionId }: { sessionId: string }) {
                   </p>
                 </div>
               </div>
+
+              <RetryPanel
+                item={item}
+                onCompleted={(nextReport) => {
+                  setReport(nextReport);
+                  void loadWeaknesses();
+                }}
+              />
             </div>
           </div>
           </FadeIn>
         ))}
       </section>
+
+      <WeaknessPlan
+        weaknesses={weaknesses}
+        error={weaknessError}
+        onUpdated={(updated) =>
+          setWeaknesses((current) =>
+            current.map((weakness) =>
+              weakness.id === updated.id ? updated : weakness
+            )
+          )
+        }
+      />
 
       {/* ── Next Practice ── */}
       <FadeIn delay={0.2}>
@@ -315,18 +389,48 @@ export function ReportView({ sessionId }: { sessionId: string }) {
             <Button
               variant="secondary"
               onClick={async () => {
+                if (
+                  !shareExpiresAt &&
+                  !window.confirm("分享链接将在 7 天内允许任何获得链接的人查看本报告。确定创建吗？")
+                ) {
+                  return;
+                }
                 const response = await fetch(`/api/reports/${sessionId}/share`, { method: "POST" });
                 const payload = await response.json();
                 if (response.ok) {
                   await navigator.clipboard.writeText(`${window.location.origin}${payload.path}`);
                   setLinkCopied(true);
+                  setShareExpiresAt(payload.expiresAt);
                 }
               }}
               size="lg"
             >
               <Share2 className="size-4" />{linkCopied ? "链接已复制" : "复制报告链接"}
             </Button>
+            {shareExpiresAt ? (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const response = await fetch(`/api/reports/${sessionId}/share`, {
+                    method: "DELETE"
+                  });
+                  if (response.ok) {
+                    setShareExpiresAt(null);
+                    setLinkCopied(false);
+                  }
+                }}
+                size="lg"
+              >
+                <Unlink className="size-4" />
+                撤销分享
+              </Button>
+            ) : null}
           </div>
+          {shareExpiresAt ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              分享链接有效至 {new Date(shareExpiresAt).toLocaleString()}，可随时撤销。
+            </p>
+          ) : null}
         </div>
       </div>
       </FadeIn>
@@ -357,6 +461,46 @@ export function ReportView({ sessionId }: { sessionId: string }) {
             placeholder="可选：哪部分最有用，哪里还可以改进？"
             className="mt-3 min-h-24 w-full rounded-button border border-input bg-background px-3 py-2 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring/15"
           />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <fieldset>
+              <legend className="text-sm font-medium">你觉得评分高低准确吗？</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {([
+                  ["TOO_HIGH", "偏高"],
+                  ["ACCURATE", "准确"],
+                  ["TOO_LOW", "偏低"]
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={scoreAccuracy === value ? "primary" : "secondary"}
+                    onClick={() => setScoreAccuracy(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+            <label className="space-y-2 text-sm font-medium">
+              <span>哪部分最有用？</span>
+              <select
+                value={mostUseful ?? ""}
+                onChange={(event) =>
+                  setMostUseful(
+                    (event.target.value || null) as typeof mostUseful
+                  )
+                }
+                className="block h-9 w-full rounded-button border border-input bg-background px-3 text-sm font-normal"
+              >
+                <option value="">可选</option>
+                <option value="SCORES">评分维度</option>
+                <option value="IMPROVEMENTS">改进建议</option>
+                <option value="SAMPLE_ANSWERS">范例答案</option>
+                <option value="PLAN">训练计划</option>
+              </select>
+            </label>
+          </div>
           <div className="mt-3 flex items-center gap-3">
             <Button onClick={submitFeedback} disabled={!rating || feedbackState !== "idle"}>
               {feedbackState === "saving" ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -373,6 +517,335 @@ export function ReportView({ sessionId }: { sessionId: string }) {
           </details>
         </div>
       </FadeIn>
+    </div>
+  );
+}
+
+function WeaknessPlan({
+  weaknesses,
+  error,
+  onUpdated
+}: {
+  weaknesses: Weakness[];
+  error: string | null;
+  onUpdated: (weakness: Weakness) => void;
+}) {
+  if (!weaknesses.length && !error) return null;
+
+  return (
+    <FadeIn delay={0.16}>
+      <section className="rounded-card border border-primary/15 bg-white shadow-card">
+        <div className="border-b border-black/[0.08] px-6 py-5">
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="size-5 text-primary" />
+            <h2 className="text-xl font-semibold tracking-subheading text-foreground">
+              定向复测计划
+            </h2>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            每场最多保留 3 个有评分证据的弱点；只有你确认后才会进入下一场 Mock。
+          </p>
+        </div>
+        <div className="grid gap-4 px-6 py-5 lg:grid-cols-3">
+          {weaknesses.map((weakness) => (
+            <WeaknessCard
+              key={weakness.id}
+              weakness={weakness}
+              onUpdated={onUpdated}
+            />
+          ))}
+        </div>
+        {error ? (
+          <p className="px-6 pb-5 text-sm text-destructive">{error}</p>
+        ) : null}
+      </section>
+    </FadeIn>
+  );
+}
+
+function WeaknessCard({
+  weakness,
+  onUpdated
+}: {
+  weakness: Weakness;
+  onUpdated: (weakness: Weakness) => void;
+}) {
+  const [dueDate, setDueDate] = useState(defaultDueDate());
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const task = weakness.latestTrainingTask;
+  const canConfirm = ["PROPOSED", "NOT_IMPROVED", "IMPROVING", "CONFIRMED"].includes(
+    weakness.status
+  );
+
+  async function update(action: "CONFIRM" | "IGNORE") {
+    setIsSaving(true);
+    setError(null);
+    const response = await fetch(`/api/weaknesses/${weakness.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        action === "CONFIRM"
+          ? { action, dueAt: new Date(`${dueDate}T09:00:00`).toISOString() }
+          : { action }
+      )
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      weakness?: Weakness;
+      error?: string;
+    };
+    setIsSaving(false);
+    if (!response.ok || !payload.weakness) {
+      setError(payload.error ?? "训练状态更新失败。 ");
+      return;
+    }
+    onUpdated(payload.weakness);
+  }
+
+  return (
+    <article className="rounded-button border border-black/[0.08] bg-secondary/20 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{weakness.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            基线 {weakness.baselineScore}/5
+            {weakness.latestScore !== undefined
+              ? ` · 复测 ${weakness.latestScore}/5`
+              : ""}
+          </p>
+        </div>
+        <Badge tone={weaknessTone(weakness)}>{weaknessStatusLabel(weakness)}</Badge>
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        {weakness.evidenceSummary}
+      </p>
+
+      {task ? (
+        <div className="mt-3 rounded-md border border-primary/10 bg-white/80 p-3">
+          <p className="text-xs font-semibold text-foreground">等价复测题</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {task.equivalentQuestion.prompt}
+          </p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {task.status === "IN_PROGRESS"
+              ? "已进入当前 Mock"
+              : task.status === "COMPLETED"
+                ? "本轮复测已完成"
+                : `计划于 ${new Date(task.dueAt).toLocaleDateString()} 进入 ${task.equivalentQuestion.targetRole} · ${task.equivalentQuestion.difficulty} Mock`}
+          </p>
+        </div>
+      ) : null}
+
+      {canConfirm && task?.status !== "IN_PROGRESS" ? (
+        <div className="mt-4 space-y-2">
+          <label className="block text-xs font-medium text-foreground">
+            复测日期
+            <input
+              type="date"
+              value={dueDate}
+              min={minimumDueDate()}
+              onChange={(event) => setDueDate(event.target.value)}
+              className="mt-1 block h-9 w-full rounded-button border border-input bg-white px-3 text-sm"
+            />
+          </label>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => update("CONFIRM")} disabled={isSaving}>
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              {task?.status === "PENDING" ? "更新日期" : "确认并加入"}
+            </Button>
+            {weakness.status === "PROPOSED" || task?.status === "PENDING" ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => update("IGNORE")}
+                disabled={isSaving}
+              >
+                <X className="size-4" />忽略
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
+    </article>
+  );
+}
+
+function weaknessStatusLabel(weakness: Weakness) {
+  const labels: Record<Weakness["status"], string> = {
+    PROPOSED: "待确认",
+    CONFIRMED: "已确认",
+    IGNORED: "已忽略",
+    NOT_IMPROVED: "未改善",
+    IMPROVING: "改善中",
+    PASSED: "已通过"
+  };
+  return labels[weakness.status];
+}
+
+function weaknessTone(weakness: Weakness) {
+  if (weakness.status === "PASSED") return "teal" as const;
+  if (weakness.status === "IGNORED") return "slate" as const;
+  return weakness.severity === "HIGH" ? ("coral" as const) : ("amber" as const);
+}
+
+function defaultDueDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return toDateInput(date);
+}
+
+function minimumDueDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return toDateInput(date);
+}
+
+function toDateInput(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function RetryPanel({
+  item,
+  onCompleted
+}: {
+  item: ReportQuestionFeedback;
+  onCompleted: (report: Report) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [content, setContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [comparison, setComparison] = useState<AttemptComparison | null>(null);
+  const idempotencyKey = useRef<string | null>(null);
+
+  async function submitRetry() {
+    if (content.trim().length < 20 || !item.latestAttemptId) return;
+    setIsSaving(true);
+    setError(null);
+    idempotencyKey.current ??= crypto.randomUUID();
+
+    try {
+      const response = await fetch(
+        `/api/attempts/${item.latestAttemptId}/retry`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey.current
+          },
+          body: JSON.stringify({ content: content.trim() })
+        }
+      );
+      const payload = (await response.json()) as {
+        error?: string;
+        comparison?: AttemptComparison;
+        report?: Report;
+      };
+      if (!response.ok || !payload.comparison || !payload.report) {
+        throw new Error(payload.error ?? "重答评分失败，请稍后重试。");
+      }
+
+      setComparison(payload.comparison);
+      onCompleted(payload.report);
+      setContent("");
+      setIsOpen(false);
+      idempotencyKey.current = null;
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "重答评分失败，请稍后重试。"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-5 rounded-button border border-primary/15 bg-primary/[0.035] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">把反馈立刻用起来</h4>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            原回答会永久保留；重答将使用同一评分版本生成可比结果。
+          </p>
+        </div>
+        <Button
+          variant={isOpen ? "secondary" : "primary"}
+          onClick={() => setIsOpen((value) => !value)}
+          disabled={!item.latestAttemptId || isSaving}
+        >
+          <RotateCcw className="size-4" />
+          {isOpen ? "收起" : item.attemptCount > 1 ? "再次重答" : "立即重答"}
+        </Button>
+      </div>
+
+      {isOpen ? (
+        <div className="mt-4 space-y-3">
+          <Textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            maxLength={20000}
+            placeholder="先给结论，再补充个人行动、证据、取舍和可验证结果……"
+            disabled={isSaving}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              {content.trim().length}/20 字最低要求
+            </p>
+            <Button
+              onClick={submitRetry}
+              disabled={content.trim().length < 20 || isSaving}
+            >
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <TrendingUp className="size-4" />}
+              {isSaving ? "评分并对比中" : "提交并查看变化"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+
+      {comparison ? (
+        <div className="mt-4 border-t border-primary/10 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={comparison.totalDelta >= 0 ? "teal" : "coral"}>
+              总分 {comparison.beforeTotal} → {comparison.afterTotal}
+            </Badge>
+            <span className="text-sm font-semibold text-foreground">
+              {comparison.totalDelta >= 0 ? "+" : ""}{comparison.totalDelta} 分
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {comparison.dimensionDeltas.map((delta) => (
+              <div key={delta.dimension} className="rounded-md bg-white/80 px-3 py-2 text-xs">
+                <p className="text-muted-foreground">{dimensionLabels[delta.dimension]}</p>
+                <p className="mt-1 font-semibold text-foreground">
+                  {delta.before} → {delta.after}（{delta.delta >= 0 ? "+" : ""}{delta.delta}）
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-foreground">已观察到采纳</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {comparison.adoptedActions.length
+                  ? comparison.adoptedActions.join("；")
+                  : "暂无可由规则可靠确认的采纳项，不做主观推断。"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">仍需改进</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {comparison.remainingActions.join("；") || "本轮未生成新的改进项。"}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

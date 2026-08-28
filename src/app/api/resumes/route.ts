@@ -22,6 +22,12 @@ export async function POST(request: Request) {
     const actor = await requireAuth(request);
     const form = await request.formData();
     const file = form.get("file");
+    if (form.get("privacyAccepted") !== "true") {
+      return NextResponse.json(
+        { error: "请先同意简历数据处理和保留说明。" },
+        { status: 400 }
+      );
+    }
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Resume file is required." }, { status: 400 });
     }

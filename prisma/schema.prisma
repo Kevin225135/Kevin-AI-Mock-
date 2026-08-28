@@ -28,6 +28,114 @@ enum SessionStatus {
   FAILED
 }
 
+enum AnswerAttemptKind {
+  INITIAL
+  RETRY
+  RETEST
+}
+
+enum WeaknessDimension {
+  STAR_COMPLETENESS
+  LOGIC_STRUCTURE
+  CONTENT_DEPTH
+  COMMUNICATION
+}
+
+enum WeaknessSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum WeaknessStatus {
+  PROPOSED
+  CONFIRMED
+  IGNORED
+  NOT_IMPROVED
+  IMPROVING
+  PASSED
+}
+
+enum TrainingTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TraceRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  DEGRADED
+}
+
+enum TraceStepKind {
+  INPUT
+  RETRIEVAL
+  DECISION
+  TOOL
+  MODEL
+  SCORE
+  OUTPUT
+}
+
+enum TraceStepStatus {
+  OK
+  ERROR
+  FALLBACK
+}
+
+enum MemoryItemType {
+  FACT
+  PREFERENCE
+  WEAKNESS
+  TRAINING_STATE
+  TEMPORARY
+}
+
+enum MemoryItemStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+}
+
+enum PatternRightsStatus {
+  INTERNAL
+  LICENSED
+  PUBLIC_DOMAIN
+  PERMISSION_GRANTED
+  RESTRICTED
+  UNKNOWN
+}
+
+enum PatternQualityStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum PatternIngestionOutcome {
+  ACCEPTED
+  REJECTED
+  DUPLICATE
+  UPDATED
+}
+
+enum BadCaseType {
+  SCORING
+  HALLUCINATION
+  SUGGESTION
+  OTHER
+}
+
+enum BadCaseStatus {
+  OPEN
+  REGRESSION_ADDED
+  RESOLVED
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -44,6 +152,38 @@ enum UsageLedgerType {
   RESET
 }
 
+enum EvalDatasetStatus {
+  DRAFT
+  FROZEN
+  RETIRED
+}
+
+enum EvalSplit {
+  TRAIN
+  VALIDATION
+  TEST
+}
+
+enum EvalSourceType {
+  LEGACY_SYNTHETIC
+  LEGACY_CURATED_REFERENCE
+  HUMAN_GOLD
+  PRODUCTION_BAD_CASE
+}
+
+enum EvalLabelStatus {
+  REFERENCE_ONLY
+  DOUBLE_BLIND_PENDING
+  DOUBLE_BLIND_COMPLETE
+  ARBITRATED
+}
+
+enum EvalAnnotationRole {
+  PRIMARY
+  SECONDARY
+  ARBITRATOR
+}
+
 model UsagePlan {
   code                String        @id
   name                String
@@ -58,48 +198,56 @@ model UsagePlan {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  targetRole    String?        @map("target_role")
-  passwordHash  String         @map("password_hash")
-  role          UserRole       @default(USER)
-  status        UserStatus     @default(ACTIVE)
-  tokenVersion  Int            @default(0) @map("token_version")
-  planCode      String         @default("FREE") @map("plan_code")
-  plan          UsagePlan      @relation(fields: [planCode], references: [code])
-  lastLoginAt   DateTime?      @map("last_login_at")
-  authSessions  AuthSession[]
-  usagePeriods  UsagePeriod[]
-  usageLedger   UsageLedger[]
-  sessions      MockSession[]
-  resumes       Resume[]
-  events        Event[]
-  ragTraces     RagRetrievalTrace[]
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id                String              @id @default(cuid())
+  email             String              @unique
+  name              String?
+  targetRole        String?             @map("target_role")
+  passwordHash      String              @map("password_hash")
+  role              UserRole            @default(USER)
+  status            UserStatus          @default(ACTIVE)
+  tokenVersion      Int                 @default(0) @map("token_version")
+  planCode          String              @default("FREE") @map("plan_code")
+  plan              UsagePlan           @relation(fields: [planCode], references: [code])
+  lastLoginAt       DateTime?           @map("last_login_at")
+  privacyAcceptedAt DateTime?           @map("privacy_accepted_at")
+  authSessions      AuthSession[]
+  usagePeriods      UsagePeriod[]
+  usageLedger       UsageLedger[]
+  sessions          MockSession[]
+  weaknesses        Weakness[]
+  trainingTasks     TrainingTask[]
+  memoryItems       MemoryItem[]
+  traceRuns         TraceRun[]
+  badCases          BadCase[]
+  resumes           Resume[]
+  events            Event[]
+  ragTraces         RagRetrievalTrace[]
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   @@map("users")
 }
 
 model Resume {
-  id             String        @id @default(cuid())
-  userId         String        @map("user_id")
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fileName       String        @map("file_name")
-  mimeType       String        @map("mime_type")
-  rawText        String        @map("raw_text")
-  summary        String?
-  companies      String[]
-  roles          String[]
-  skills         String[]
-  projects       Json
-  education      Json
-  parseStatus    String        @default("COMPLETED") @map("parse_status")
-  sessions       MockSession[]
-  ragTraces      RagRetrievalTrace[]
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                 String              @id @default(cuid())
+  userId             String              @map("user_id")
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName           String              @map("file_name")
+  mimeType           String              @map("mime_type")
+  rawText            String              @map("raw_text")
+  summary            String?
+  companies          String[]
+  roles              String[]
+  skills             String[]
+  projects           Json
+  education          Json
+  parseStatus        String              @default("COMPLETED") @map("parse_status")
+  privacyAcceptedAt  DateTime            @default(now()) @map("privacy_accepted_at")
+  retentionExpiresAt DateTime?           @map("retention_expires_at")
+  sessions           MockSession[]
+  ragTraces          RagRetrievalTrace[]
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   @@index([userId, createdAt])
   @@map("resumes")
@@ -163,40 +311,42 @@ model UsageLedger {
 }
 
 model QuestionBank {
-  id              String           @id @default(cuid())
-  externalId      String           @unique @map("external_id")
-  module          InterviewModule
-  targetRole      String           @map("target_role")
-  difficulty      Difficulty       @default(MEDIUM)
-  prompt          String
-  expectation     String?
-  keywords        String[]         @default([])
-  retrievalContext Json?           @map("retrieval_context")
-  rubricVersionId String?          @map("rubric_version_id")
-  rubricVersion   RubricVersion?   @relation(fields: [rubricVersionId], references: [id])
-  answers         Answer[]
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  id                      String          @id @default(cuid())
+  externalId              String          @unique @map("external_id")
+  module                  InterviewModule
+  targetRole              String          @map("target_role")
+  difficulty              Difficulty      @default(MEDIUM)
+  prompt                  String
+  expectation             String?
+  keywords                String[]        @default([])
+  retrievalContext        Json?           @map("retrieval_context")
+  rubricVersionId         String?         @map("rubric_version_id")
+  rubricVersion           RubricVersion?  @relation(fields: [rubricVersionId], references: [id])
+  answers                 Answer[]
+  sourceTrainingTasks     TrainingTask[]  @relation("TrainingTaskSourceQuestion")
+  equivalentTrainingTasks TrainingTask[]  @relation("TrainingTaskEquivalentQuestion")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
 
   @@index([module, targetRole, difficulty])
   @@map("question_bank")
 }
 
 model RagRetrievalTrace {
-  id           String   @id @default(cuid())
-  userId       String?  @map("user_id")
-  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resumeId     String?  @map("resume_id")
-  resume       Resume?  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  sessionId    String?  @map("session_id")
-  session      MockSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  phase        String
-  query        String
-  keywords     String[]
-  candidates   Json
-  selected     Json
-  latencyMs    Int      @map("latency_ms")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id         String       @id @default(cuid())
+  userId     String?      @map("user_id")
+  user       User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId   String?      @map("resume_id")
+  resume     Resume?      @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  sessionId  String?      @map("session_id")
+  session    MockSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phase      String
+  query      String
+  keywords   String[]
+  candidates Json
+  selected   Json
+  latencyMs  Int          @map("latency_ms")
+  createdAt  DateTime     @default(now()) @map("created_at")
 
   @@index([userId, createdAt])
   @@index([resumeId, createdAt])
@@ -205,31 +355,31 @@ model RagRetrievalTrace {
 }
 
 model KnowledgeEntry {
-  id               String   @id @default(cuid())
-  slug             String   @unique
-  domain           String
-  category         String
-  titleZh          String   @map("title_zh")
-  titleEn          String   @map("title_en")
-  summaryZh        String   @map("summary_zh")
-  summaryEn        String   @map("summary_en")
-  contentZh        String   @map("content_zh")
-  contentEn        String   @map("content_en")
-  keywords         String[]
-  competencies     String[]
-  sourceTitle      String   @map("source_title")
-  sourceUrl        String   @map("source_url")
-  sourceAuthority  Int      @default(60) @map("source_authority")
-  publishedAt      DateTime? @map("published_at")
-  expiresAt        DateTime? @map("expires_at")
-  lastVerifiedAt   DateTime? @map("last_verified_at")
-  researchRound    Int      @map("research_round")
-  embeddingModel   String   @map("embedding_model")
-  embedding        Float[]
-  searchVector     Unsupported("tsvector") @default(dbgenerated("''::tsvector")) @map("search_vector")
-  isPublished      Boolean  @default(true) @map("is_published")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String                  @id @default(cuid())
+  slug            String                  @unique
+  domain          String
+  category        String
+  titleZh         String                  @map("title_zh")
+  titleEn         String                  @map("title_en")
+  summaryZh       String                  @map("summary_zh")
+  summaryEn       String                  @map("summary_en")
+  contentZh       String                  @map("content_zh")
+  contentEn       String                  @map("content_en")
+  keywords        String[]
+  competencies    String[]
+  sourceTitle     String                  @map("source_title")
+  sourceUrl       String                  @map("source_url")
+  sourceAuthority Int                     @default(60) @map("source_authority")
+  publishedAt     DateTime?               @map("published_at")
+  expiresAt       DateTime?               @map("expires_at")
+  lastVerifiedAt  DateTime?               @map("last_verified_at")
+  researchRound   Int                     @map("research_round")
+  embeddingModel  String                  @map("embedding_model")
+  embedding       Float[]
+  searchVector    Unsupported("tsvector") @default(dbgenerated("''::tsvector")) @map("search_vector")
+  isPublished     Boolean                 @default(true) @map("is_published")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
 
   @@index([domain, category])
   @@index([isPublished, updatedAt])
@@ -239,26 +389,30 @@ model KnowledgeEntry {
 }
 
 model MockSession {
-  id                  String        @id @default(cuid())
-  userId              String        @map("user_id")
-  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resumeId            String?       @map("resume_id")
-  resume              Resume?       @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  module              InterviewModule
-  targetRole          String        @map("target_role")
-  difficulty          Difficulty    @default(MEDIUM)
-  status              SessionStatus @default(CREATED)
-  questionCount       Int           @default(3) @map("question_count")
-  currentQuestionIndex Int          @default(0) @map("current_question_index")
-  selectedQuestionIds String[]      @map("selected_question_ids")
-  followUpRound       Int           @default(0) @map("follow_up_round")
-  answers             Answer[]
-  scores              AiScore[]
-  report              Report?
-  events              Event[]
-  ragTraces           RagRetrievalTrace[]
-  createdAt           DateTime      @default(now()) @map("created_at")
-  updatedAt           DateTime      @updatedAt @map("updated_at")
+  id                   String              @id @default(cuid())
+  userId               String              @map("user_id")
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId             String?             @map("resume_id")
+  resume               Resume?             @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  module               InterviewModule
+  targetRole           String              @map("target_role")
+  difficulty           Difficulty          @default(MEDIUM)
+  status               SessionStatus       @default(CREATED)
+  questionCount        Int                 @default(3) @map("question_count")
+  currentQuestionIndex Int                 @default(0) @map("current_question_index")
+  selectedQuestionIds  String[]            @map("selected_question_ids")
+  followUpRound        Int                 @default(0) @map("follow_up_round")
+  answers              Answer[]
+  scores               AiScore[]
+  report               Report?
+  weaknesses           Weakness[]
+  retestTrainingTasks  TrainingTask[]      @relation("TrainingTaskRetestSession")
+  traceRuns            TraceRun[]
+  badCases             BadCase[]
+  events               Event[]
+  ragTraces            RagRetrievalTrace[]
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
 
   @@index([userId, status])
   @@index([module, targetRole])
@@ -266,21 +420,30 @@ model MockSession {
 }
 
 model Answer {
-  id            String       @id @default(cuid())
-  sessionId     String       @map("session_id")
-  session       MockSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  questionId    String       @map("question_id")
-  question      QuestionBank @relation(fields: [questionId], references: [id])
-  content       String
-  followUpRound Int          @default(0) @map("follow_up_round")
-  audioUrl      String?      @map("audio_url")
-  transcript    String?
-  sttStatus     String?      @map("stt_status")
-  score         AiScore?
-  submittedAt   DateTime     @default(now()) @map("submitted_at")
+  id                     String            @id @default(cuid())
+  sessionId              String            @map("session_id")
+  session                MockSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId             String            @map("question_id")
+  question               QuestionBank      @relation(fields: [questionId], references: [id])
+  content                String
+  followUpRound          Int               @default(0) @map("follow_up_round")
+  attemptNo              Int               @default(1) @map("attempt_no")
+  attemptKind            AnswerAttemptKind @default(INITIAL) @map("attempt_kind")
+  parentAnswerId         String?           @map("parent_answer_id")
+  parentAnswer           Answer?           @relation("AnswerRetries", fields: [parentAnswerId], references: [id], onDelete: SetNull)
+  retryAttempts          Answer[]          @relation("AnswerRetries")
+  weaknessEvidence       Weakness[]        @relation("WeaknessSourceAnswer")
+  completedTrainingTasks TrainingTask[]    @relation("TrainingTaskRetestAnswer")
+  idempotencyKey         String?           @unique @map("idempotency_key")
+  audioUrl               String?           @map("audio_url")
+  transcript             String?
+  sttStatus              String?           @map("stt_status")
+  score                  AiScore?
+  submittedAt            DateTime          @default(now()) @map("submitted_at")
 
-  @@unique([sessionId, questionId, followUpRound])
+  @@unique([sessionId, questionId, followUpRound, attemptNo])
   @@index([sessionId, submittedAt])
+  @@index([parentAnswerId, attemptNo])
   @@map("answers")
 }
 
@@ -319,21 +482,222 @@ model Report {
   nextPracticePlan  String[]    @map("next_practice_plan")
   shareToken        String?     @unique @map("share_token")
   isPublic          Boolean     @default(false) @map("is_public")
+  shareExpiresAt    DateTime?   @map("share_expires_at")
   createdAt         DateTime    @default(now()) @map("created_at")
 
   @@map("reports")
 }
 
+model Weakness {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId       String            @map("session_id")
+  session         MockSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceAnswerId  String            @map("source_answer_id")
+  sourceAnswer    Answer            @relation("WeaknessSourceAnswer", fields: [sourceAnswerId], references: [id], onDelete: Cascade)
+  dimension       WeaknessDimension
+  title           String
+  evidenceRef     String            @map("evidence_ref")
+  evidenceSummary String            @map("evidence_summary")
+  severity        WeaknessSeverity
+  status          WeaknessStatus    @default(PROPOSED)
+  baselineScore   Int               @map("baseline_score")
+  latestScore     Int?              @map("latest_score")
+  dueAt           DateTime?         @map("due_at")
+  confirmedAt     DateTime?         @map("confirmed_at")
+  ignoredAt       DateTime?         @map("ignored_at")
+  trainingTasks   TrainingTask[]
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@unique([sessionId, dimension])
+  @@index([userId, status, dueAt])
+  @@map("weaknesses")
+}
+
+model TrainingTask {
+  id                   String             @id @default(cuid())
+  weaknessId           String             @map("weakness_id")
+  weakness             Weakness           @relation(fields: [weaknessId], references: [id], onDelete: Cascade)
+  userId               String             @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceQuestionId     String             @map("source_question_id")
+  sourceQuestion       QuestionBank       @relation("TrainingTaskSourceQuestion", fields: [sourceQuestionId], references: [id])
+  equivalentQuestionId String             @map("equivalent_question_id")
+  equivalentQuestion   QuestionBank       @relation("TrainingTaskEquivalentQuestion", fields: [equivalentQuestionId], references: [id])
+  status               TrainingTaskStatus @default(PENDING)
+  dueAt                DateTime           @map("due_at")
+  retestSessionId      String?            @map("retest_session_id")
+  retestSession        MockSession?       @relation("TrainingTaskRetestSession", fields: [retestSessionId], references: [id], onDelete: SetNull)
+  retestAnswerId       String?            @map("retest_answer_id")
+  retestAnswer         Answer?            @relation("TrainingTaskRetestAnswer", fields: [retestAnswerId], references: [id], onDelete: SetNull)
+  completedAt          DateTime?          @map("completed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId, status, dueAt])
+  @@index([weaknessId, createdAt])
+  @@index([retestSessionId, equivalentQuestionId])
+  @@map("training_tasks")
+}
+
+model MemoryItem {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       MemoryItemType
+  status     MemoryItemStatus @default(PROPOSED)
+  value      Json
+  sourceRef  String           @map("source_ref")
+  confidence Float
+  expiresAt  DateTime?        @map("expires_at")
+  version    Int              @default(1)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@unique([userId, type, sourceRef])
+  @@index([userId, type, status, updatedAt])
+  @@index([expiresAt])
+  @@map("memory_items")
+}
+
+model InterviewPattern {
+  id               String                      @id @default(cuid())
+  externalId       String                      @unique @map("external_id")
+  question         String
+  answerGuidance   String?                     @map("answer_guidance")
+  module           InterviewModule
+  difficulty       Difficulty                  @default(MEDIUM)
+  companyTags      String[]                    @default([]) @map("company_tags")
+  roleTags         String[]                    @default([]) @map("role_tags")
+  competencyTags   String[]                    @default([]) @map("competency_tags")
+  projectKeywords  String[]                    @default([]) @map("project_keywords")
+  sourceTitle      String                      @map("source_title")
+  sourceUrl        String?                     @map("source_url")
+  collectionMethod String                      @map("collection_method")
+  rightsStatus     PatternRightsStatus         @map("rights_status")
+  dedupeHash       String                      @unique @map("dedupe_hash")
+  qualityStatus    PatternQualityStatus        @default(DRAFT) @map("quality_status")
+  qualityScore     Float                       @default(0) @map("quality_score")
+  qualityReasons   String[]                    @default([]) @map("quality_reasons")
+  sourceUpdatedAt  DateTime?                   @map("source_updated_at")
+  lastReviewedAt   DateTime?                   @map("last_reviewed_at")
+  isPublished      Boolean                     @default(false) @map("is_published")
+  ingestionAudits  InterviewPatternIngestion[]
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  @@index([module, difficulty, qualityStatus, isPublished])
+  @@index([rightsStatus, qualityStatus])
+  @@map("interview_patterns")
+}
+
+model InterviewPatternIngestion {
+  id               String                  @id @default(cuid())
+  patternId        String?                 @map("pattern_id")
+  pattern          InterviewPattern?       @relation(fields: [patternId], references: [id], onDelete: SetNull)
+  externalId       String                  @map("external_id")
+  dedupeHash       String                  @map("dedupe_hash")
+  outcome          PatternIngestionOutcome
+  reasons          String[]                @default([])
+  sourceTitle      String                  @map("source_title")
+  sourceUrl        String?                 @map("source_url")
+  collectionMethod String                  @map("collection_method")
+  rightsStatus     PatternRightsStatus     @map("rights_status")
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  @@index([outcome, createdAt])
+  @@index([dedupeHash, createdAt])
+  @@index([patternId, createdAt])
+  @@map("interview_pattern_ingestions")
+}
+
+model TraceRun {
+  id               String         @id @default(cuid())
+  runId            String         @unique @map("run_id")
+  userId           String?        @map("user_id")
+  user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId        String?        @map("session_id")
+  session          MockSession?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  attemptId        String?        @map("attempt_id")
+  name             String
+  workflowVersion  String         @map("workflow_version")
+  promptVersion    String?        @map("prompt_version")
+  model            String?
+  status           TraceRunStatus @default(RUNNING)
+  inputRefs        Json           @map("input_refs")
+  inputTokens      Int            @default(0) @map("input_tokens")
+  outputTokens     Int            @default(0) @map("output_tokens")
+  estimatedCostUsd Float          @default(0) @map("estimated_cost_usd")
+  latencyMs        Int?           @map("latency_ms")
+  fallbackReason   String?        @map("fallback_reason")
+  errorType        String?        @map("error_type")
+  finalState       String?        @map("final_state")
+  steps            TraceStep[]
+  badCases         BadCase[]
+  startedAt        DateTime       @default(now()) @map("started_at")
+  completedAt      DateTime?      @map("completed_at")
+
+  @@index([userId, startedAt])
+  @@index([sessionId, startedAt])
+  @@index([status, startedAt])
+  @@map("trace_runs")
+}
+
+model BadCase {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId      String        @map("session_id")
+  session        MockSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  traceRunId     String?       @map("trace_run_id")
+  traceRun       TraceRun?     @relation(fields: [traceRunId], references: [id], onDelete: SetNull)
+  questionId     String?       @map("question_id")
+  type           BadCaseType
+  status         BadCaseStatus @default(OPEN)
+  severity       String
+  comment        String
+  rootCauseLabel String?       @map("root_cause_label")
+  regressionRef  String?       @map("regression_ref")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([traceRunId, status])
+  @@map("bad_cases")
+}
+
+model TraceStep {
+  id            String          @id @default(cuid())
+  traceRunId    String          @map("trace_run_id")
+  traceRun      TraceRun        @relation(fields: [traceRunId], references: [id], onDelete: Cascade)
+  sequence      Int
+  kind          TraceStepKind
+  name          String
+  status        TraceStepStatus @default(OK)
+  inputSummary  Json?           @map("input_summary")
+  outputSummary Json?           @map("output_summary")
+  latencyMs     Int             @default(0) @map("latency_ms")
+  errorCode     String?         @map("error_code")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  @@unique([traceRunId, sequence])
+  @@index([traceRunId, kind])
+  @@map("trace_steps")
+}
+
 model RubricVersion {
-  id        String         @id @default(cuid())
-  code      String         @unique
-  version   Int
-  title     String
+  id         String         @id @default(cuid())
+  code       String         @unique
+  version    Int
+  title      String
   dimensions Json
-  isActive  Boolean        @default(true) @map("is_active")
-  questions QuestionBank[]
-  scores    AiScore[]
-  createdAt DateTime       @default(now()) @map("created_at")
+  isActive   Boolean        @default(true) @map("is_active")
+  questions  QuestionBank[]
+  scores     AiScore[]
+  createdAt  DateTime       @default(now()) @map("created_at")
 
   @@map("rubric_versions")
 }
@@ -342,7 +706,7 @@ model Event {
   id        String       @id @default(cuid())
   name      String
   userId    String?      @map("user_id")
-  user      User?        @relation(fields: [userId], references: [id])
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessionId String?      @map("session_id")
   session   MockSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   payload   Json?
@@ -353,33 +717,67 @@ model Event {
   @@map("events")
 }
 
+model EvalDatasetVersion {
+  id            String            @id @default(cuid())
+  name          String
+  version       String
+  description   String?
+  rubricCode    String            @map("rubric_code")
+  rubricVersion Int               @map("rubric_version")
+  status        EvalDatasetStatus @default(DRAFT)
+  sampleCount   Int               @default(0) @map("sample_count")
+  contentHash   String            @map("content_hash")
+  frozenAt      DateTime?         @map("frozen_at")
+  samples       EvalSample[]
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@unique([name, version])
+  @@index([status, frozenAt])
+  @@map("eval_dataset_versions")
+}
+
 model EvalSample {
-  id          String          @id @default(cuid())
-  module      InterviewModule
-  targetRole  String          @map("target_role")
-  question    String
-  answer      String
-  humanScore  Int             @map("human_score")
-  notes       String?
-  category    String          @default("BASIC")
-  expectedFollowUp String?    @map("expected_follow_up")
-  annotations EvalAnnotation[]
-  createdAt   DateTime        @default(now()) @map("created_at")
+  id               String             @id @default(cuid())
+  datasetVersionId String             @map("dataset_version_id")
+  datasetVersion   EvalDatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Restrict)
+  sampleKey        String             @unique @map("sample_key")
+  split            EvalSplit
+  sourceType       EvalSourceType     @map("source_type")
+  labelStatus      EvalLabelStatus    @default(REFERENCE_ONLY) @map("label_status")
+  contentHash      String             @map("content_hash")
+  module           InterviewModule
+  targetRole       String             @map("target_role")
+  question         String
+  answer           String
+  humanScore       Int                @map("human_score")
+  notes            String?
+  category         String             @default("BASIC")
+  expectedFollowUp String?            @map("expected_follow_up")
+  annotations      EvalAnnotation[]
+  createdAt        DateTime           @default(now()) @map("created_at")
 
   @@index([module, targetRole])
+  @@index([datasetVersionId, split, category])
+  @@index([sourceType, labelStatus])
   @@map("eval_samples")
 }
 
 model EvalAnnotation {
-  id          String     @id @default(cuid())
-  sampleId    String     @map("sample_id")
-  sample      EvalSample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
-  annotator   String
-  totalScore  Int        @map("total_score")
-  dimensions  Json?
-  shouldFollowUp String?  @map("should_follow_up")
-  notes       String?
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id             String             @id @default(cuid())
+  sampleId       String             @map("sample_id")
+  sample         EvalSample         @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  annotator      String
+  role           EvalAnnotationRole @default(PRIMARY)
+  rubricVersion  String             @default("v2-text-rubric-2") @map("rubric_version")
+  totalScore     Int                @map("total_score")
+  dimensions     Json?
+  evidenceRefs   String[]           @default([]) @map("evidence_refs")
+  shouldFollowUp String?            @map("should_follow_up")
+  isBlind        Boolean            @default(true) @map("is_blind")
+  notes          String?
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
   @@unique([sampleId, annotator])
   @@index([sampleId, createdAt])

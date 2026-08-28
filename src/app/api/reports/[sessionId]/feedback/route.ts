@@ -9,7 +9,9 @@ import { jsonError } from "@/lib/http/errors";
 
 const schema = z.object({
   rating: z.number().int().min(1).max(5),
-  comment: z.string().max(1000).optional()
+  comment: z.string().max(1000).optional(),
+  scoreAccuracy: z.enum(["TOO_HIGH", "ACCURATE", "TOO_LOW"]).optional(),
+  mostUseful: z.enum(["SCORES", "IMPROVEMENTS", "SAMPLE_ANSWERS", "PLAN"]).optional()
 });
 
 type Context = { params: Promise<{ sessionId: string }> };

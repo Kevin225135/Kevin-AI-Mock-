@@ -35,7 +35,7 @@ export function GlobalNavigation() {
   const isHome = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-card/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-white/50 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           {!isHome ? (
@@ -82,7 +82,7 @@ export function GlobalNavigation() {
                   className={cn(
                     "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
                     active
-                      ? "bg-card text-foreground shadow-whisper"
+                      ? "bg-white text-foreground shadow-whisper"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

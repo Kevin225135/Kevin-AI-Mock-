@@ -1,5 +1,10 @@
 import type { Difficulty, InterviewModule, ScoreDimension } from "./types";
 
+export const MIN_MOCK_QUESTIONS = 1;
+export const DEFAULT_MOCK_QUESTIONS = 3;
+export const MAX_QUESTION_BANK_QUESTIONS = 4;
+export const MAX_MOCK_QUESTIONS = 10;
+
 export const moduleOptions: Array<{
   value: InterviewModule;
   label: string;
@@ -44,7 +49,7 @@ export const difficultyOptions: Array<{
 ];
 
 export const dimensionLabels: Record<ScoreDimension, string> = {
-  starCompleteness: "STAR 完整度",
+  starCompleteness: "回答完整度",
   logicStructure: "逻辑结构",
   contentDepth: "内容深度",
   communication: "表达清晰度"
