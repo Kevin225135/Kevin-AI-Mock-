@@ -27,6 +27,18 @@
 | V2-014 | DONE | 逐文件审查并合入 embedding/RRF/reranker/source-quality；14 条双语 Gold Query 的 Recall@5 无回退，外部调用保持显式 opt-in |
 | V2-015 | DONE | 单场题量上限由 4 提升到 10；简历题按证据核验/方案取舍/结果验证生成多角度唯一问题，UI、API 与检索回归通过 |
 
+## P0：V2 发布
+
+| ID     | 状态  | 交付物与验收 |
+| ------ | ----- | ------------ |
+| V2-017 | DONE  | 可复现的 Windows x64 便携版模板、启动/停止脚本、构建脚本与验证记录已纳入版本控制；二进制、数据库、日志、ZIP、密钥和测试者数据保持忽略 |
+| V2-018 | DOING | `npm run dev` 可在未启用 Langfuse 时启动，首页返回 200，OpenTelemetry 依赖不再被错误打包到客户端 |
+| V2-019 | TODO  | 类型、Lint、单元/数据库测试、迁移、冻结集、Hybrid RAG、Promptfoo、生产构建和浏览器主链路全部有本轮证据 |
+| V2-020 | TODO  | Gitleaks Git/工作区扫描、Trivy/npm 依赖扫描完成；真实秘密为 0，High/Critical 已修复或记录发布例外与适用边界 |
+| V2-021 | TODO  | README 准确说明 V2 用户旅程、Agent/RAG/Memory/Trace、评测、便携运行、隐私边界、限制和发布证据 |
+| V2-022 | TODO  | V2 历史与 `main` 建立可审查关系，推送并合并；GitHub Actions 的 AI Eval 与 Deploy 成功，线上健康检查通过 |
+| V2-023 | TODO  | 创建 `v2.0.0` Tag/Release，上传小于 100 MiB 的 Windows x64 ZIP、SHA-256 和 Release Notes |
+
 ## 本轮交付顺序
 
 1. `DONE`：V2-002～015 的工程交付已关闭；首答 → 重答 → 弱点复测、受控 Agent、Trace/Bad Case、安全降级、内容治理、双域/Hybrid RAG、Memory、版本化评测、10 题简历面试与试点工程包均有自动化证据。
