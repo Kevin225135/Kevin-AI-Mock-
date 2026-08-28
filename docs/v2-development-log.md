@@ -115,3 +115,20 @@
 - 实际证据：稀疏简历返回 10/10 唯一问题，至少覆盖 4 个能力且每题有证据；远端 LLM 重复改写会回退原始唯一题；57/57 含数据库测试、TypeScript、ESLint、production build 通过；Playwright 实测题量达到 10 后增加按钮禁用；主页和知识库 API 返回 200。
 - 限制：10 道基础题加两轮动态追问可能形成较长会话，因此默认题量不变；真实用户对 10 题疲劳度和完成率尚未验证。
 - 决策：V2-015 工程任务关闭；下一项仍为人工双盲校准和真实用户试点。
+
+## 2026-08-28：V2-017～020 发布工程与安全门禁
+
+- 目标：把“本机能跑”升级为可复现、可迁移、可审计的 V2 发布候选。
+- 本次改动：
+  - 将 Windows x64 便携版的构建、启动、停止脚本和任务包纳入版本控制，运行时、数据库、日志、密钥与测试者数据保持忽略；
+  - 按 Next.js instrumentation 约定隔离 Node-only OpenTelemetry/Langfuse 依赖，修复开发服务器把 gRPC 引入 Web bundle 的问题；
+  - 普通题库会话限制为 4 题，只有已解析简历的会话允许生成最多 10 题；前端与 API 使用同一约束；
+  - 新增 Gitleaks 精确误报规则与 GitHub Security Gates；冻结评测集的 `sampleKey` 被证明是确定性样本 ID，不是凭据；
+  - 升级到 Next.js 15.5.24 安全维护版，并将 PostCSS、Sharp、deepmerge-ts 收口到已修复版本；保持 Next 15，避免把安全修复与 Next 16 迁移混在同一发布批次。
+- 实际证据：
+  - Gitleaks Git 历史 9 个提交、约 2.63 MB，0 泄漏；发布索引工作区另行扫描；
+  - `npm audit --omit=dev` 为 0；Trivy 缓存库扫描 High/Critical 漏洞与错误配置均为 0；CI 会在线更新数据库后复扫；
+  - Prisma Client 生成成功，17 个迁移无待应用；TypeScript、ESLint、58/58 含数据库测试和 Next.js 15.5.24 production build 全部通过；
+  - Playwright 完成登录、4 题题库面试、受控追问、报告跳转和新导航控制台检查，控制台 0 error / 0 warning。
+- 限制：本机到 Trivy OCI 数据库的下载通道过慢，本轮本地扫描使用 2026-08-17 缓存库；npm Advisory 是在线实时结果，GitHub CI 承担最新 Trivy DB 的最终门禁。
+- 决策：V2-017～020 关闭；进入 V2-021 文档与发布证据收口。
