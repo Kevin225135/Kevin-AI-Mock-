@@ -30,9 +30,15 @@
 
 ## GitHub 发布门禁
 
-合入 `main` 后必须补齐以下证据，才能将 V2-022/V2-023 标为完成：
+合入 `main` 后的最终状态：
 
-- Security Gates：Dependency Audit、Gitleaks、Trivy 全部成功；
-- AI regression evals：冻结集、切片、Hybrid RAG 与 Promptfoo 全部成功；
-- Deploy：build、迁移、SSH 发布、PM2 激活与 `/login` 200 健康检查全部成功；
-- `v2.0.0` Release：Windows x64 ZIP 小于 100 MiB，独立解压启动成功，并公布 SHA-256。
+| 门禁 | 状态 | 证据 |
+| --- | --- | --- |
+| Security Gates | PASS | Dependency Audit、Gitleaks 和 Trivy 全部成功；[GitHub Actions run 33147867211](https://github.com/Kevin225135/Kevin-AI-Mock-/actions/runs/33147867211) |
+| AI regression evals | PASS | 冻结集、切片、Hybrid RAG 与 Promptfoo 全部成功；[GitHub Actions run 33147294410](https://github.com/Kevin225135/Kevin-AI-Mock-/actions/runs/33147294410) |
+| Deploy build | PASS | Next.js standalone 和服务器内最小 Prisma 迁移包构建、上传 Actions Artifact 成功 |
+| Deploy activate | BLOCKED | 同一个 run 的首次与失败任务重跑均在 `scp` 连接部署机时 SSH timeout；还未执行服务器内迁移、PM2 激活与 `/login` 200 健康检查；[GitHub Actions run 33147867209](https://github.com/Kevin225135/Kevin-AI-Mock-/actions/runs/33147867209) |
+| Windows x64 portable | PASS | ZIP 99,344,949 bytes（94.74 MiB）；全新目录独立解压后首页/登录/知识库均返回 200，内置 PostgreSQL 与应用均正常停止 |
+| SHA-256 | PASS | `854c47c48c51faeebeb0b4533a31fe2573a13948725ec2d003d48012332da55a` |
+
+V2-023 的便携发布交付已关闭。V2-022 保持 `BLOCKED`，直到部署机恢复对 GitHub Actions 的 SSH 可达性并获得远程迁移和健康检查证据。

@@ -33,15 +33,15 @@
 | ------ | ----- | ------------ |
 | V2-017 | DONE  | 可复现的 Windows x64 便携版模板、启动/停止脚本、构建脚本与验证记录已纳入版本控制；二进制、数据库、日志、ZIP、密钥和测试者数据保持忽略 |
 | V2-018 | DONE  | Node 专用观测代码按 Next.js instrumentation 约定拆分；未启用 Langfuse 时开发服务 9.3 秒就绪，首页返回 200，不再把 OpenTelemetry/gRPC 打入 Web bundle |
-| V2-019 | DONE  | 17 个迁移同步；类型/Lint、58/58 含数据库测试、318 条冻结集、14 条 Hybrid RAG Gold Query、Promptfoo 4/4、生产构建通过；Playwright 完成登录→4 题主问题+受控追问→报告，已登录新导航控制台 0 错误 |
+| V2-019 | DONE  | 18 个迁移同步；类型/Lint、58/58 含数据库测试、318 条冻结集、14 条 Hybrid RAG Gold Query、Promptfoo 4/4、生产构建通过；Playwright 完成登录→4 题主问题+受控追问→报告，已登录新导航控制台 0 错误 |
 | V2-020 | DONE  | Gitleaks Git/发布工作区均为 0 泄漏；`npm audit --omit=dev` 为 0；Trivy High/Critical 为 0；Next.js 15.5.24、PostCSS 8.5.26、Sharp 0.35.4 与 deepmerge-ts 8.0.0 已通过 58/58 DB 测试和生产构建；在线更新扫描已纳入 CI |
 | V2-021 | DONE  | README 已改为 V2 产品主页，包含真实首页/报告截图、用户旅程、受控 Agent、RAG/Memory/Trace、评测证据、便携/源码运行、隐私边界与不能声称的结果 |
-| V2-022 | DOING | V2 历史与 `main` 建立可审查关系，推送并合并；GitHub Actions 的 AI Eval 与 Deploy 成功，线上健康检查通过 |
-| V2-023 | TODO  | 创建 `v2.0.0` Tag/Release，上传小于 100 MiB 的 Windows x64 ZIP、SHA-256 和 Release Notes |
+| V2-022 | BLOCKED | V2 已合并并推送至 `main`；Security Gates 与 AI Eval 成功，Deploy build 成功；GitHub Runner 连续两次连接部署机 SSH 超时，因此服务器内迁移、PM2 激活与线上健康检查尚未执行 |
+| V2-023 | DONE  | `v2.0.0` Tag/Release 发布 Windows x64 ZIP、SHA-256 和 Release Notes；ZIP 为 99,344,949 bytes（94.74 MiB），独立解压启动、登录、知识检索与停止验收通过 |
 
 ## 本轮交付顺序
 
-1. `DONE`：V2-002～015 的工程交付已关闭；首答 → 重答 → 弱点复测、受控 Agent、Trace/Bad Case、安全降级、内容治理、双域/Hybrid RAG、Memory、版本化评测、10 题简历面试与试点工程包均有自动化证据。
-2. `NEXT`：按 `v2-eval-annotation-protocol.md` 先对校准子集执行两名独立标注员 + 第三人仲裁，把 `REFERENCE_ONLY` 样本逐版本升级为人工 Gold；当前人工 Gold 仍为 0。
-3. `VALIDATE`：按 `v2-pilot-research-pack.md` 招募真实用户执行 V2-012 试点；当前参与者/事件分母为 0，不声称用户效果。
-4. `HARDEN`：单独规划 Next.js 16 兼容性升级，处理 `npm audit` 报告的 3 个 high；补装 Gitleaks 后执行仓库与工作区双扫描。
+1. `DONE`：V2-002～021 与 V2-023 的工程交付已有自动化或发布证据。
+2. `UNBLOCK`：检查部署机在线状态、安全组、防火墙、sshd 与 `SSH_HOST:SSH_PORT` Secret，恢复 GitHub Actions 的 SSH 可达性后重跑 Deploy，关闭 V2-022。
+3. `NEXT`：按 `v2-eval-annotation-protocol.md` 对校准子集执行两名独立标注员 + 第三人仲裁，把 `REFERENCE_ONLY` 样本逐版本升级为人工 Gold；当前人工 Gold 仍为 0。
+4. `VALIDATE`：按 `v2-pilot-research-pack.md` 招募真实用户执行 V2-012 试点；当前参与者/事件分母为 0，不声称用户效果。

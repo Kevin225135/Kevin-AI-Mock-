@@ -132,3 +132,21 @@
   - Playwright 完成登录、4 题题库面试、受控追问、报告跳转和新导航控制台检查，控制台 0 error / 0 warning。
 - 限制：本机到 Trivy OCI 数据库的下载通道过慢，本轮本地扫描使用 2026-08-17 缓存库；npm Advisory 是在线实时结果，GitHub CI 承担最新 Trivy DB 的最终门禁。
 - 决策：V2-017～020 关闭；进入 V2-021 文档与发布证据收口。
+
+## 2026-08-28：V2-021～023 产品呈现与发布收口
+
+- 目标：用可审查的产品页、GitHub 门禁、生产部署链路与小于 100 MiB 的便携包收口 V2。
+- 本次改动：
+  - README 升级为 V2 产品主页，展示真实截图、训练闭环、受控 Agent、RAG/Memory/Trace、评测与隐私边界；
+  - 将无共同祖先的 V2 历史合并到 `main`，保留可回滚备份分支，并在全新库与 `main` 升级库两条路径演练 18 个迁移；
+  - GitHub Security Gates 与 AI regression evals 通过；Deploy build 把 Next.js standalone、Prisma CLI 与迁移历史封装为一个发布产物，不要求部署机在线安装 npm 依赖；
+  - 生成 Windows x64 便携 ZIP，自带 Node.js、PostgreSQL、演示数据库和一键启停脚本，且不包含开发机密钥或用户数据。
+- 实际证据：
+  - Security Gates run 33147867211 与 AI regression evals run 33147294410 成功；
+  - 便携 ZIP 为 99,344,949 bytes（94.74 MiB），SHA-256 为 `854c47c48c51faeebeb0b4533a31fe2573a13948725ec2d003d48012332da55a`；
+  - 在与源码分离的新目录中解压并启动，`/login` 200、演示登录 API 200、知识库 API 200 且返回 463 条知识计数；随后应用与内置 PostgreSQL 正常停止。
+- 限制与阻塞：
+  - Deploy run 33147867209 的构建成功，但首次与失败任务重跑都在 GitHub Runner 连接部署机时 SSH timeout；服务器内迁移、PM2 激活与 `/login` 健康检查没有机会执行；
+  - 因此 V2-022 保持 `BLOCKED`，需要在云服务器安全组/防火墙/sshd 恢复 GitHub Actions 对 `SSH_HOST:SSH_PORT` 的可达性后重跑 Deploy；
+  - 人工 Gold 与真实用户试点分母仍为 0，发布工程证据不代表用户效果已被证明。
+- 决策：V2-021 与 V2-023 关闭；V2-022 因部署机 SSH 入口外部阻塞保持未完成。
