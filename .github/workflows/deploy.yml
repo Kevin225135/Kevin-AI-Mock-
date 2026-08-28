@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install migration runner
+        run: npm ci --prefix deploy/migration-runner
+
       - name: Generate Prisma client
         run: npm run db:generate
 
@@ -70,6 +73,12 @@ jobs:
           fi
 
           cp deploy/ecosystem.config.cjs release/ecosystem.config.cjs
+          mkdir -p release/.migration
+          cp -R prisma release/.migration/prisma
+          cp -R deploy/migration-runner/node_modules release/.migration/node_modules
+
+          test -f release/.migration/prisma/schema.prisma
+          test -f release/.migration/node_modules/prisma/build/index.js
           tar -C release -czf "$RELEASE_ARCHIVE" .
 
       - name: Upload release artifact
@@ -86,19 +95,6 @@ jobs:
     needs: build
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Download release artifact
         uses: actions/download-artifact@v7
         with:
@@ -147,75 +143,6 @@ jobs:
             ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
           fi
           chmod 600 ~/.ssh/known_hosts
-
-      - name: Run database migrations through SSH tunnel
-        shell: bash
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
-        run: |
-          set -euo pipefail
-
-          SSH_PORT="${SSH_PORT:-22}"
-          tunnel_port="54329"
-          printf '%s\n' "$PRODUCTION_ENV" > production.env
-          database_url_line="$(grep -E '^DATABASE_URL=' production.env | tail -n 1 || true)"
-
-          if [ -z "$database_url_line" ]; then
-            echo "::error title=Missing DATABASE_URL::PRODUCTION_ENV must include DATABASE_URL."
-            exit 1
-          fi
-
-          database_url="${database_url_line#DATABASE_URL=}"
-          database_url="${database_url%\"}"
-          database_url="${database_url#\"}"
-          database_url="${database_url%\'}"
-          database_url="${database_url#\'}"
-
-          mapfile -t db_values < <(
-            DATABASE_URL="$database_url" TUNNEL_PORT="$tunnel_port" node <<'NODE'
-          const url = new URL(process.env.DATABASE_URL);
-          const targetHost = url.hostname;
-          const targetPort = url.port || "5432";
-          url.hostname = "127.0.0.1";
-          url.port = process.env.TUNNEL_PORT;
-          console.log(targetHost);
-          console.log(targetPort);
-          console.log(url.toString());
-          NODE
-          )
-
-          db_host="${db_values[0]}"
-          db_port="${db_values[1]}"
-          DATABASE_URL="${db_values[2]}"
-          export DATABASE_URL
-
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" \
-            -o ExitOnForwardFailure=yes \
-            -o ServerAliveInterval=15 \
-            -N -L "127.0.0.1:${tunnel_port}:${db_host}:${db_port}" \
-            "$SSH_USER@$SSH_HOST" &
-          tunnel_pid=$!
-          trap 'kill "$tunnel_pid" 2>/dev/null || true' EXIT
-
-          tunnel_ready=0
-          for _ in $(seq 1 20); do
-            if (echo > "/dev/tcp/127.0.0.1/$tunnel_port") 2>/dev/null; then
-              tunnel_ready=1
-              break
-            fi
-            sleep 1
-          done
-
-          if [ "$tunnel_ready" -ne 1 ]; then
-            echo "::error title=Database tunnel failed::Could not reach the database through the deployment host."
-            exit 1
-          fi
-
-          npm run db:generate
-          npm run db:deploy
 
       - name: Upload release
         shell: bash
@@ -284,12 +211,14 @@ jobs:
 
           test -f "$release_dir/server.js"
           test -f "$release_dir/ecosystem.config.cjs"
+          test -f "$release_dir/.migration/prisma/schema.prisma"
+          test -f "$release_dir/.migration/node_modules/prisma/build/index.js"
 
-          release_port="$(
+          mapfile -t release_env_values < <(
             ENV_FILE="$release_dir/.env.production" node <<'NODE'
           const fs = require("node:fs");
           const envFile = process.env.ENV_FILE;
-          let port = "";
+          const values = new Map();
 
           for (const rawLine of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
             const line = rawLine.trim();
@@ -298,13 +227,13 @@ jobs:
               continue;
             }
 
-            const match = line.match(/^PORT\s*=\s*(.*)$/);
+            const match = line.match(/^(DATABASE_URL|PORT)\s*=\s*(.*)$/);
 
             if (!match) {
               continue;
             }
 
-            let value = match[1].trim();
+            let value = match[2].trim();
             const quoted =
               (value.startsWith('"') && value.endsWith('"')) ||
               (value.startsWith("'") && value.endsWith("'"));
@@ -313,12 +242,26 @@ jobs:
               value = value.slice(1, -1);
             }
 
-            port = value;
+            values.set(match[1], value);
           }
 
-          console.log(port || "3000");
+          console.log(values.get("DATABASE_URL") || "");
+          console.log(values.get("PORT") || "3000");
           NODE
-          )"
+          )
+
+          database_url="${release_env_values[0]:-}"
+          release_port="${release_env_values[1]:-3000}"
+
+          if [ -z "$database_url" ]; then
+            echo "DATABASE_URL is required in the production environment file." >&2
+            exit 1
+          fi
+
+          DATABASE_URL="$database_url" node \
+            "$release_dir/.migration/node_modules/prisma/build/index.js" \
+            migrate deploy \
+            --schema "$release_dir/.migration/prisma/schema.prisma"
 
           ln -sfnT "$release_dir" "$DEPLOY_PATH/current"
           cd "$DEPLOY_PATH/current"

@@ -19,8 +19,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            deploy/migration-runner/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix deploy/migration-runner
       - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --prefix deploy/migration-runner --omit=dev --audit-level=high
 
   secret-scan:
     runs-on: ubuntu-latest

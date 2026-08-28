@@ -1,0 +1,11 @@
+{
+  "name": "ai-mock-migration-runner",
+  "version": "2.0.0",
+  "private": true,
+  "dependencies": {
+    "prisma": "6.19.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0"
+  }
+}
