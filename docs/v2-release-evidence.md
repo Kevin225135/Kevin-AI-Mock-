@@ -10,7 +10,7 @@
 
 | 门禁 | 结果 | 证据摘要 |
 | --- | --- | --- |
-| Prisma | PASS | Client 6.19.3 生成成功；PostgreSQL 17 个迁移，无待应用迁移 |
+| Prisma | PASS | Client 6.19.3 生成成功；PostgreSQL 18 个迁移；全新数据库与先应用 `main` 再升级 V2 两条路径均成功 |
 | TypeScript | PASS | `npm run typecheck`，0 error |
 | ESLint | PASS | `npm run lint`，0 warning / 0 error |
 | 自动化测试 | PASS | 58/58，包含数据库纵向闭环、隔离、幂等、Agent 降级、RAG、Memory、Trace 与 10 题简历生成 |

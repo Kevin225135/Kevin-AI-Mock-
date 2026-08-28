@@ -97,11 +97,14 @@ ALTER TABLE "eval_annotations"
   ADD COLUMN "is_blind" BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
+-- These columns and indexes were already shipped on the original main branch in
+-- 20260729030000_hybrid_rag_quality. The V2 branch was developed from an
+-- unrelated history, so keep this migration safe for both upgrade paths.
 ALTER TABLE "knowledge_entries"
-  ADD COLUMN "source_authority" INTEGER NOT NULL DEFAULT 60,
-  ADD COLUMN "published_at" TIMESTAMP(3),
-  ADD COLUMN "expires_at" TIMESTAMP(3),
-  ADD COLUMN "last_verified_at" TIMESTAMP(3);
+  ADD COLUMN IF NOT EXISTS "source_authority" INTEGER NOT NULL DEFAULT 60,
+  ADD COLUMN IF NOT EXISTS "published_at" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "expires_at" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "last_verified_at" TIMESTAMP(3);
 
 CREATE UNIQUE INDEX "eval_dataset_versions_name_version_key"
   ON "eval_dataset_versions"("name", "version");
@@ -112,9 +115,9 @@ CREATE INDEX "eval_samples_dataset_version_id_split_category_idx"
   ON "eval_samples"("dataset_version_id", "split", "category");
 CREATE INDEX "eval_samples_source_type_label_status_idx"
   ON "eval_samples"("source_type", "label_status");
-CREATE INDEX "knowledge_entries_is_published_source_authority_idx"
+CREATE INDEX IF NOT EXISTS "knowledge_entries_is_published_source_authority_idx"
   ON "knowledge_entries"("is_published", "source_authority");
-CREATE INDEX "knowledge_entries_expires_at_idx"
+CREATE INDEX IF NOT EXISTS "knowledge_entries_expires_at_idx"
   ON "knowledge_entries"("expires_at");
 
 ALTER TABLE "eval_samples"
