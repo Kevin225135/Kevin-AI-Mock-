@@ -14,6 +14,27 @@ test("accepts up to ten questions for a mock session", () => {
   assert.equal(parsed.questionCount, 10);
 });
 
+test("limits question-bank sessions to four questions", () => {
+  assert.equal(
+    createSessionSchema.safeParse({
+      ...baseSession,
+      resumeId: undefined,
+      module: "BEHAVIORAL",
+      questionCount: 5
+    }).success,
+    false
+  );
+  assert.equal(
+    createSessionSchema.safeParse({
+      ...baseSession,
+      resumeId: undefined,
+      module: "BEHAVIORAL",
+      questionCount: 4
+    }).success,
+    true
+  );
+});
+
 test("rejects more than ten questions for a mock session", () => {
   assert.equal(
     createSessionSchema.safeParse({ ...baseSession, questionCount: 11 }).success,

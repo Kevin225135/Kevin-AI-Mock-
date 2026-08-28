@@ -21,6 +21,7 @@ import {
   DEFAULT_MOCK_QUESTIONS,
   difficultyOptions,
   MAX_MOCK_QUESTIONS,
+  MAX_QUESTION_BANK_QUESTIONS,
   MIN_MOCK_QUESTIONS,
   moduleOptions,
   roleOptions
@@ -127,6 +128,9 @@ export function StartMockForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const questionLimit = resumeId
+    ? MAX_MOCK_QUESTIONS
+    : MAX_QUESTION_BANK_QUESTIONS;
 
   useEffect(() => {
     fetch("/api/resumes")
@@ -134,6 +138,10 @@ export function StartMockForm() {
       .then((payload) => setResumes(payload.resumes ?? []))
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    setQuestionCount((current) => Math.min(current, questionLimit));
+  }, [questionLimit]);
 
   async function uploadResume(file?: File) {
     if (!file) return;
@@ -355,13 +363,16 @@ export function StartMockForm() {
                   size="icon"
                   className="size-8"
                   onClick={() => setQuestionCount((value) =>
-                    Math.min(MAX_MOCK_QUESTIONS, value + 1))}
-                  disabled={questionCount >= MAX_MOCK_QUESTIONS}
+                    Math.min(questionLimit, value + 1))}
+                  disabled={questionCount >= questionLimit}
                   aria-label="增加题量"
                 >
                   <Plus className="size-4" />
                 </Button>
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {resumeId ? "简历面试最多 10 题" : "选择已解析简历后可生成最多 10 题"}
+              </p>
             </div>
           </div>
 

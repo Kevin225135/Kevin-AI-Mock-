@@ -2,19 +2,30 @@ import { z } from "zod";
 import {
   DEFAULT_MOCK_QUESTIONS,
   MAX_MOCK_QUESTIONS,
+  MAX_QUESTION_BANK_QUESTIONS,
   MIN_MOCK_QUESTIONS
 } from "@/lib/domain/constants";
 
-export const createSessionSchema = z.object({
-  module: z.enum(["BEHAVIORAL", "CV_RELATED", "TECHNICAL", "MARKET"]),
-  targetRole: z.string().min(2).max(80),
-  difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
-  questionCount: z.coerce.number().int()
-    .min(MIN_MOCK_QUESTIONS)
-    .max(MAX_MOCK_QUESTIONS)
-    .default(DEFAULT_MOCK_QUESTIONS),
-  resumeId: z.string().min(1).optional()
-});
+export const createSessionSchema = z
+  .object({
+    module: z.enum(["BEHAVIORAL", "CV_RELATED", "TECHNICAL", "MARKET"]),
+    targetRole: z.string().min(2).max(80),
+    difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
+    questionCount: z.coerce.number().int()
+      .min(MIN_MOCK_QUESTIONS)
+      .max(MAX_MOCK_QUESTIONS)
+      .default(DEFAULT_MOCK_QUESTIONS),
+    resumeId: z.string().min(1).optional()
+  })
+  .superRefine((value, context) => {
+    if (!value.resumeId && value.questionCount > MAX_QUESTION_BANK_QUESTIONS) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["questionCount"],
+        message: `Question-bank sessions support at most ${MAX_QUESTION_BANK_QUESTIONS} questions; select a resume to generate up to ${MAX_MOCK_QUESTIONS}.`
+      });
+    }
+  });
 
 export const submitAnswerSchema = z.object({
   questionId: z.string().min(1),

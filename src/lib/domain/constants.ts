@@ -2,6 +2,7 @@ import type { Difficulty, InterviewModule, ScoreDimension } from "./types";
 
 export const MIN_MOCK_QUESTIONS = 1;
 export const DEFAULT_MOCK_QUESTIONS = 3;
+export const MAX_QUESTION_BANK_QUESTIONS = 4;
 export const MAX_MOCK_QUESTIONS = 10;
 
 export const moduleOptions: Array<{
