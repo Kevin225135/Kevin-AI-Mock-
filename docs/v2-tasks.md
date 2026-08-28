@@ -35,8 +35,8 @@
 | V2-018 | DONE  | Node 专用观测代码按 Next.js instrumentation 约定拆分；未启用 Langfuse 时开发服务 9.3 秒就绪，首页返回 200，不再把 OpenTelemetry/gRPC 打入 Web bundle |
 | V2-019 | DONE  | 17 个迁移同步；类型/Lint、58/58 含数据库测试、318 条冻结集、14 条 Hybrid RAG Gold Query、Promptfoo 4/4、生产构建通过；Playwright 完成登录→4 题主问题+受控追问→报告，已登录新导航控制台 0 错误 |
 | V2-020 | DONE  | Gitleaks Git/发布工作区均为 0 泄漏；`npm audit --omit=dev` 为 0；Trivy High/Critical 为 0；Next.js 15.5.24、PostCSS 8.5.26、Sharp 0.35.4 与 deepmerge-ts 8.0.0 已通过 58/58 DB 测试和生产构建；在线更新扫描已纳入 CI |
-| V2-021 | DOING | README 准确说明 V2 用户旅程、Agent/RAG/Memory/Trace、评测、便携运行、隐私边界、限制和发布证据 |
-| V2-022 | TODO  | V2 历史与 `main` 建立可审查关系，推送并合并；GitHub Actions 的 AI Eval 与 Deploy 成功，线上健康检查通过 |
+| V2-021 | DONE  | README 已改为 V2 产品主页，包含真实首页/报告截图、用户旅程、受控 Agent、RAG/Memory/Trace、评测证据、便携/源码运行、隐私边界与不能声称的结果 |
+| V2-022 | DOING | V2 历史与 `main` 建立可审查关系，推送并合并；GitHub Actions 的 AI Eval 与 Deploy 成功，线上健康检查通过 |
 | V2-023 | TODO  | 创建 `v2.0.0` Tag/Release，上传小于 100 MiB 的 Windows x64 ZIP、SHA-256 和 Release Notes |
 
 ## 本轮交付顺序
